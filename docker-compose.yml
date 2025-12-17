@@ -1,0 +1,14 @@
+services:
+  vuddy:
+    build:
+      context: ./docker/vuddy
+      dockerfile: Dockerfile
+    image: vuddy:0.1.0
+    container_name: vuddy
+    working_dir: /app/vuddy/hmark
+    tty: true
+    stdin_open: true
+    environment:
+      - PYTHONUNBUFFERED=1
+    # 필요시 bash로 들어가서 바로 실행할 수 있도록
+    command: ["/bin/bash", "-lc", "echo 'VUDDY Container Ready' && bash"]
