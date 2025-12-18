@@ -4,11 +4,8 @@ FROM ubuntu:22.04
 # Set non-interactive mode to avoid prompts during installation
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Update system packages
-RUN apt-get update
-
-# Install required packages
-RUN apt-get install -y \
+# Update system packages and install required packages
+RUN apt-get update && apt-get install -y \
     # Python 3 and development tools
     python3 \
     python3-pip \
