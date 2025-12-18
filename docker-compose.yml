@@ -10,5 +10,5 @@ services:
     stdin_open: true
     environment:
       - PYTHONUNBUFFERED=1
-    # 필요시 bash로 들어가서 바로 실행할 수 있도록
+    # Allow entering a bash shell and running commands directly if needed
     command: ["/bin/bash", "-lc", "echo 'VUDDY Container Ready' && bash"]
