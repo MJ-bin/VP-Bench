@@ -118,5 +118,5 @@ RUN test -f /app/LineVul/linevul/saved_models/checkpoint-best-f1/12heads_linevul
     test -f /app/LineVul/data/big-vul_dataset/test.csv && \
     echo "✅ LineVul build verification passed"
 
-# 7. Default command to keep the container running
-CMD ["tail", "-f", "/dev/null"]
+# 7. Default command - show welcome message with usage hints
+CMD ["/bin/bash", "-c", "echo 'LineVul Container Ready' && echo 'Run: cd /app/LineVul/linevul && python linevul_main.py [OPTIONS]' && /bin/bash"]
