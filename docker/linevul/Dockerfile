@@ -112,5 +112,11 @@ config.num_labels = 2              # Line-level classification
 config.save_pretrained("/app/LineVul/linevul/saved_models/checkpoint-best-f1")
 PY
 
-# 6. Default command to keep the container running
+# 6. Build verification - 필수 파일 존재 확인
+RUN test -f /app/LineVul/linevul/saved_models/checkpoint-best-f1/12heads_linevul_model.bin && \
+    test -f /app/LineVul/data/big-vul_dataset/train.csv && \
+    test -f /app/LineVul/data/big-vul_dataset/test.csv && \
+    echo "✅ LineVul build verification passed"
+
+# 7. Default command to keep the container running
 CMD ["tail", "-f", "/dev/null"]
