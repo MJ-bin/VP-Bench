@@ -92,8 +92,8 @@ RUN git clone https://github.com/awsm-research/LineVul.git &&\
     #gdown "https://drive.google.com/uc?id=1h0iFJbc5DGXCXXvvR6dru_Dms_b2zW4V" -O ./LineVul/data/big-vul_dataset/test.csv && \
     #gdown "https://drive.google.com/uc?id=1ldXyFvHG41VMrm260cK_JEPYqeb6e6Yw" -O ./LineVul/data/big-vul_dataset/train.csv && \
     #gdown "https://drive.google.com/uc?id=1yggncqivMcP0tzbh8-8Eu02Edwcs44WZ" -O ./LineVul/data/big-vul_dataset/val.csv && \
-    gdown "https://drive.google.com/uc?id=1oodyQqRb9jEcvLMVVKILmu8qHyNwd-zH" -O ./LineVul/linevul/saved_models/checkpoint-best-f1/12heads_linevul_model.bin
-    wget https://github.com/seokjeon/VP-Bench/releases/download/v0.1.0/big-vul_dataset.7z -P ./LineVul/data/big-vul_dataset/ &&\
+    gdown "https://drive.google.com/uc?id=1oodyQqRb9jEcvLMVVKILmu8qHyNwd-zH" -O ./LineVul/linevul/saved_models/checkpoint-best-f1/12heads_linevul_model.bin && \
+    wget https://github.com/seokjeon/VP-Bench/releases/download/v0.1.0/big-vul_dataset.7z -P ./LineVul/data/big-vul_dataset/ && \
     7z x ./LineVul/data/big-vul_dataset/big-vul_dataset.7z -o./LineVul/data/big-vul_dataset/
     # mkdir -p /data/project_files && \
     # mkdir -p $SLURM_TMPDIR # Real_Vul 데이터셋이 주어지므로 사용하지 않음
