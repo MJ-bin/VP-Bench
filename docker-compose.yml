@@ -24,3 +24,15 @@ services:
     stdin_open: true
     # Allow entering a bash shell and running commands directly if needed
     command: ["/bin/bash", "-lc", "echo 'DeepWukong Container Ready' && bash"]
+
+  linevul:
+    build:
+      context: ./docker/linevul
+      dockerfile: Dockerfile
+    image: linevul:0.1.0
+    container_name: linevul
+    working_dir: /app
+    tty: true
+    stdin_open: true
+    # Allow entering a bash shell and running commands directly if needed
+    command: ["/bin/bash", "-lc", "echo 'LineVul Container Ready' && bash"]
