@@ -122,4 +122,4 @@ RUN test -f /app/RealVul/LineVul/linevul/saved_models/checkpoint-best-f1/12heads
     echo "✅ LineVul build verification passed"
 
 # 7. Default command - show welcome message with usage hints
-CMD ["/bin/bash", "-c", "echo 'LineVul Container Ready' && echo 'Run: cd /app/RealVul/LineVul/linevul && python linevul_main.py [OPTIONS]' && /bin/bash"]
+CMD ["/bin/bash", "-c", "echo 'LineVul Container Ready' && echo 'Run: cd /app/RealVul/LineVul/linevul && /bin/bash"]
