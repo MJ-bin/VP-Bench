@@ -89,6 +89,7 @@ EOF
 # 5. Set directory, file
 WORKDIR /app
 RUN git clone https://github.com/seokjeon/RealVul.git && \
+    cd RealVul && \
     git submodule update --init --recursive && \
     #gdown "https://drive.google.com/uc?id=1h0iFJbc5DGXCXXvvR6dru_Dms_b2zW4V" -O ./LineVul/data/big-vul_dataset/test.csv && \
     #gdown "https://drive.google.com/uc?id=1ldXyFvHG41VMrm260cK_JEPYqeb6e6Yw" -O ./LineVul/data/big-vul_dataset/train.csv && \
@@ -101,24 +102,24 @@ RUN git clone https://github.com/seokjeon/RealVul.git && \
 RUN mkdir -p /app/RealVul/Experiments/LineVul/best_model && \
     cp /app/RealVul/LineVul/linevul/saved_models/checkpoint-best-f1/12heads_linevul_model.bin /app/RealVul/Experiments/LineVul/best_model/ && \
     cp /app/RealVul/Experiments/LineVul/best_model/12heads_linevul_model.bin /app/RealVul/Experiments/LineVul/best_model/pytorch_model.bin && \
-    wget https://github.com/seokjeon/VP-Bench/releases/download/RealVul_Dataset/dataset_without_src.7z -P /app/Dataset/ && \
-    wget https://github.com/seokjeon/VP-Bench/releases/download/RealVul_Dataset/all_source_code.tar.xz -P /app/Dataset/ && \
-    7z x /app/Dataset/dataset_without_src.7z -o/app/Dataset/ && \
-    tar -xvf /app/Dataset/all_source_code.tar.xz -C /app/Dataset/
+    wget https://github.com/seokjeon/VP-Bench/releases/download/RealVul_Dataset/dataset_without_src.7z -P /app/RealVul/Dataset/ && \
+    wget https://github.com/seokjeon/VP-Bench/releases/download/RealVul_Dataset/all_source_code.tar.xz -P /app/RealVul/Dataset/ && \
+    7z x /app/RealVul/Dataset/dataset_without_src.7z -o/app/RealVul/Dataset/ && \
+    tar -xvf /app/RealVul/Dataset/all_source_code.tar.xz -C /app/RealVul/Dataset/
 
 # HuggingFace 에서 기본 설정 config.json 로드
 RUN python - <<'PY'
 from transformers import RobertaConfig
 config = RobertaConfig.from_pretrained("microsoft/codebert-base")
 config.num_labels = 2              # Line-level classification
-config.save_pretrained("/app/Experiments/LineVul/best_model")
+config.save_pretrained("/app/RealVul/Experiments/LineVul/best_model")
 PY
 
 # 6. Build verification - 필수 파일 존재 확인
 RUN test -f /app/RealVul/LineVul/linevul/saved_models/checkpoint-best-f1/12heads_linevul_model.bin && \
     test -f /app/RealVul/LineVul/data/big-vul_dataset/train.csv && \
-    test -f /app/LineVul/data/big-vul_dataset/test.csv && \
+    test -f /app/RealVul/LineVul/data/big-vul_dataset/test.csv && \
     echo "✅ LineVul build verification passed"
 
 # 7. Default command - show welcome message with usage hints
-CMD ["/bin/bash", "-c", "echo 'LineVul Container Ready' && echo 'Run: cd /app/LineVul/linevul && python linevul_main.py [OPTIONS]' && /bin/bash"]
+CMD ["/bin/bash", "-c", "echo 'LineVul Container Ready' && echo 'Run: cd /app/RealVul/LineVul/linevul && python linevul_main.py [OPTIONS]' && /bin/bash"]
