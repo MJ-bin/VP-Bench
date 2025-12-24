@@ -95,8 +95,8 @@ RUN git clone https://github.com/seokjeon/RealVul.git && \
     #gdown "https://drive.google.com/uc?id=1ldXyFvHG41VMrm260cK_JEPYqeb6e6Yw" -O ./LineVul/data/big-vul_dataset/train.csv && \
     #gdown "https://drive.google.com/uc?id=1yggncqivMcP0tzbh8-8Eu02Edwcs44WZ" -O ./LineVul/data/big-vul_dataset/val.csv && \
     gdown --fuzzy "https://drive.google.com/uc?id=1oodyQqRb9jEcvLMVVKILmu8qHyNwd-zH" -O /app/RealVul/LineVul/linevul/saved_models/checkpoint-best-f1/12heads_linevul_model.bin && \
-    wget https://github.com/seokjeon/VP-Bench/releases/download/v0.1.0/big-vul_dataset.7z -P ./RealVul/LineVul/data/big-vul_dataset/ && \
-    7z x ./RealVul/LineVul/data/big-vul_dataset/big-vul_dataset.7z -o./RealVul/LineVul/data/big-vul_dataset/
+    wget https://github.com/seokjeon/VP-Bench/releases/download/v0.1.0/big-vul_dataset.7z -P /app/RealVul/LineVul/data/big-vul_dataset/ && \
+    7z x /app/RealVul/LineVul/data/big-vul_dataset/big-vul_dataset.7z -o/app/RealVul/LineVul/data/big-vul_dataset/
 
 # 추후 RealVul 데이터셋 활용을 위해 준비
 RUN mkdir -p /app/RealVul/Experiments/LineVul/best_model && \
