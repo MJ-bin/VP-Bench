@@ -88,33 +88,35 @@ EOF
 
 # 5. Set directory, file
 WORKDIR /app
-RUN git clone https://github.com/awsm-research/LineVul.git &&\
+RUN git clone https://github.com/seokjeon/RealVul.git && \
+    git submodule update --init --recursive && \
     #gdown "https://drive.google.com/uc?id=1h0iFJbc5DGXCXXvvR6dru_Dms_b2zW4V" -O ./LineVul/data/big-vul_dataset/test.csv && \
     #gdown "https://drive.google.com/uc?id=1ldXyFvHG41VMrm260cK_JEPYqeb6e6Yw" -O ./LineVul/data/big-vul_dataset/train.csv && \
     #gdown "https://drive.google.com/uc?id=1yggncqivMcP0tzbh8-8Eu02Edwcs44WZ" -O ./LineVul/data/big-vul_dataset/val.csv && \
-    gdown "https://drive.google.com/uc?id=1oodyQqRb9jEcvLMVVKILmu8qHyNwd-zH" -O ./LineVul/linevul/saved_models/checkpoint-best-f1/12heads_linevul_model.bin && \
-    wget https://github.com/seokjeon/VP-Bench/releases/download/v0.1.0/big-vul_dataset.7z -P ./LineVul/data/big-vul_dataset/ && \
-    7z x ./LineVul/data/big-vul_dataset/big-vul_dataset.7z -o./LineVul/data/big-vul_dataset/
-    # mkdir -p /data/project_files && \
-    # mkdir -p $SLURM_TMPDIR # Real_Vul 데이터셋이 주어지므로 사용하지 않음
+    gdown --fuzzy "https://drive.google.com/uc?id=1oodyQqRb9jEcvLMVVKILmu8qHyNwd-zH" -O /app/RealVul/LineVul/linevul/saved_models/checkpoint-best-f1/12heads_linevul_model.bin && \
+    wget https://github.com/seokjeon/VP-Bench/releases/download/v0.1.0/big-vul_dataset.7z -P ./RealVul/LineVul/data/big-vul_dataset/ && \
+    7z x ./RealVul/LineVul/data/big-vul_dataset/big-vul_dataset.7z -o./RealVul/LineVul/data/big-vul_dataset/
 
 # 추후 RealVul 데이터셋 활용을 위해 준비
-RUN mkdir -p /app/Experiments/LineVul/best_model &&\
-    cp /app/LineVul/linevul/saved_models/checkpoint-best-f1/12heads_linevul_model.bin /app/Experiments/LineVul/best_model/ && \
-    cp /app/Experiments/LineVul/best_model/12heads_linevul_model.bin /app/Experiments/LineVul/best_model/pytorch_model.bin
-
+RUN mkdir -p /app/RealVul/Experiments/LineVul/best_model && \
+    cp /app/RealVul/LineVul/linevul/saved_models/checkpoint-best-f1/12heads_linevul_model.bin /app/RealVul/Experiments/LineVul/best_model/ && \
+    cp /app/RealVul/Experiments/LineVul/best_model/12heads_linevul_model.bin /app/RealVul/Experiments/LineVul/best_model/pytorch_model.bin && \
+    wget https://github.com/seokjeon/VP-Bench/releases/download/RealVul_Dataset/dataset_without_src.7z -P /app/Dataset/ && \
+    wget https://github.com/seokjeon/VP-Bench/releases/download/RealVul_Dataset/all_source_code.tar.xz -P /app/Dataset/ && \
+    7z x /app/Dataset/dataset_without_src.7z -o/app/Dataset/ && \
+    tar -xvf /app/Dataset/all_source_code.tar.xz -C /app/Dataset/
 
 # HuggingFace 에서 기본 설정 config.json 로드
 RUN python - <<'PY'
 from transformers import RobertaConfig
 config = RobertaConfig.from_pretrained("microsoft/codebert-base")
 config.num_labels = 2              # Line-level classification
-config.save_pretrained("/app/LineVul/linevul/saved_models/checkpoint-best-f1")
+config.save_pretrained("/app/Experiments/LineVul/best_model")
 PY
 
 # 6. Build verification - 필수 파일 존재 확인
-RUN test -f /app/LineVul/linevul/saved_models/checkpoint-best-f1/12heads_linevul_model.bin && \
-    test -f /app/LineVul/data/big-vul_dataset/train.csv && \
+RUN test -f /app/RealVul/LineVul/linevul/saved_models/checkpoint-best-f1/12heads_linevul_model.bin && \
+    test -f /app/RealVul/LineVul/data/big-vul_dataset/train.csv && \
     test -f /app/LineVul/data/big-vul_dataset/test.csv && \
     echo "✅ LineVul build verification passed"
 
