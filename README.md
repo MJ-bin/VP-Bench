@@ -11,3 +11,6 @@
 ## 셸 접속
 `docker compose exec {프로젝트 명} bash`
 
+## 빌드 성공여부 검증
+* linevul : 
+`bats ./docker/linevul/test_image.bats`
