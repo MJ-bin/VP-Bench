@@ -1,3 +1,13 @@
+# User defined
+logs/
+*.log
+dataset_pipeline/SLURM_TMPDIR
+dataset_pipeline/patchAll0206
+dataset_pipeline/split0206
+output/
+input/
+archive/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
