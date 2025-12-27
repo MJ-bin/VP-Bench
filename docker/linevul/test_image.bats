@@ -1,25 +1,7 @@
 #!/usr/bin/env bats
 
-# [설정] 테스트 시작 전 1회 실행 (컨테이너 실행)
 setup_file() {
-    echo "# Setting up: Cleaning old container and starting new one..." >&3
-    
-    # 0. 컨테이너 실행 (백그라운드 모드 -d)
-    run docker run -d --gpus all --name linevul linevul
-    
-    if [ "$status" -ne 0 ]; then
-        echo "# Error: Failed to start container" >&3
-        return 1
-    fi
-    
-    # 컨테이너가 완전히 뜰 때까지 대기
-    sleep 5
-}
-
-# [정리] 모든 테스트 종료 후 1회 실행 (컨테이너 삭제)
-teardown_file() {
-    echo "# Teardown: Removing container..." >&3
-    docker rm -f linevul
+    echo "# Using existing compose container: linevul" >&3
 }
 
 # -------------------------------------------------------------------
