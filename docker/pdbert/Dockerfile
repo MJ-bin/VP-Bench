@@ -64,5 +64,11 @@ RUN git lfs install && \
     git clone https://huggingface.co/microsoft/codebert-base pretrain/microsoft/codebert-base && \
     git clone https://huggingface.co/microsoft/codebert-base downstream/microsoft/codebert-base
 
-# 기본 명령어 (PDBERT 디렉토리에서 시작)
+# global_vars.json 동적 생성을 위한 엔트리포인트 설정
+RUN echo '#!/bin/bash\n\
+HOSTNAME=$(hostname)\n\
+echo "{\n  \"$HOSTNAME\": {\n    \"python_bin\": \"/usr/bin/python\"\n  }\n}" > /app/PDBERT/downstream/global_vars.json\n\
+exec "$@"' > /entrypoint.sh && chmod +x /entrypoint.sh
+
+ENTRYPOINT ["/entrypoint.sh"]
 CMD ["/bin/bash"]
