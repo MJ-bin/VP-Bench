@@ -50,10 +50,10 @@ RUN pip install --no-cache-dir \
     allennlp_models==2.8.0
 
 # PDBERT 클론 및 데이터 설정
-WORKDIR /app
+WORKDIR /
 RUN git clone https://github.com/MJ-bin/PDBERT.git
 
-WORKDIR /app/PDBERT
+WORKDIR /PDBERT
 RUN curl -L "https://github.com/MJ-bin/PDBERT/releases/download/v0.1.0/PDBERT_data.zip" -o PDBERT_data.zip && \
     7z x PDBERT_data.zip && \
     mv PDBERT_data/data ./data && \
@@ -67,7 +67,7 @@ RUN git lfs install && \
 # global_vars.json 동적 생성을 위한 엔트리포인트 설정
 RUN echo '#!/bin/bash\n\
 HOSTNAME=$(hostname)\n\
-echo "{\n  \"$HOSTNAME\": {\n    \"python_bin\": \"/usr/bin/python\"\n  }\n}" > /app/PDBERT/downstream/global_vars.json\n\
+echo "{\n  \"$HOSTNAME\": {\n    \"python_bin\": \"/usr/bin/python\"\n  }\n}" > /PDBERT/downstream/global_vars.json\n\
 exec "$@"' > /entrypoint.sh && chmod +x /entrypoint.sh
 
 ENTRYPOINT ["/entrypoint.sh"]
