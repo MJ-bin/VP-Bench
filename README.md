@@ -23,4 +23,5 @@
 ### 사전 준비 사항
 1. .venv 활성화
 2. pip install -r requirements.txt
-3. .env 파일 생성 및 설정 `GITHUB_TOKEN = {본인 깃헙 토큰 키 값}` 
+3. .env 파일 생성 및 설정 `GITHUB_TOKEN = {본인 깃헙 토큰 키 값}`
+4. `bash ./dataset_pipeline/run.sh`
