@@ -14,9 +14,7 @@ filter_by_project_url() {
                 | select(
                     ((test("git\\."+$project+"\\.org"; "i") and test("commit"; "i")))
                     or
-                    ((test("github.com"; "i") and test("commit"; "i") and test("/"+$project+"/"; "i")))
-                    or
-                    ((test("gitlab.com"; "i") and test("commit"; "i") and test("/"+$project+"/"; "i")))
+                    (((test("github.com"; "i") or test("gitlab.com"; "i")) and test("commit"; "i") and test("/"+$project+"/"; "i")))
                 )
             ]}
             | select(.urls | length > 0)

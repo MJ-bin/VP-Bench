@@ -10,7 +10,7 @@ download_and_extract() {
     
     # input 폴더에 이미 JSON이 있으면 스킵
     if [ -f "$INPUT_DIR/$json_file" ]; then
-        echo "   [Check] 이미 JSON 파일이 준비되어 있습니다."
+        echo "   [Check] 이미 ${year}년 NVD CVE JSON 파일이 준비되어 있습니다."
         return 0
     fi
     

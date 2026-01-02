@@ -7,25 +7,10 @@ from pydriller import Repository, Git
 from datetime import datetime, timedelta
 from collections import Counter
 import shutil
-from omegaconf import OmegaConf, DictConfig
-from argparse import ArgumentParser
-from typing import cast
-import pandas as pd
-
-
-
-
 import argparse
-parser = argparse.ArgumentParser()
-parser.add_argument('--input-csv', default="./dataset_pipeline/VP-Bench_Dataset/output/jasper/VP-Bench_jasper_files_changed_with_targets.csv")
-parser.add_argument('--output-csv', default="./dataset_pipeline/VP-Bench_Dataset/output/jasper/jasper_dataset.csv")
-args = parser.parse_args()
 
-projects=["jasper"] # ["FFmpeg","ImageMagick","jasper","krb5","openssl","php-src","qemu","tcpdump","linux","Chrome"]
-bigvul_data=pd.read_csv(args.input_csv)
-
-# 프로젝트별 git 저장소 URL 매핑 (예시, 실제 URL로 수정 필요)
-project_git_urls = {
+# Constants
+PROJECT_GIT_URLS = {
     "FFmpeg": "https://github.com/FFmpeg/FFmpeg.git",
     "ImageMagick": "https://github.com/ImageMagick/ImageMagick.git",
     "jasper": "https://github.com/jasper-software/jasper.git",
@@ -37,120 +22,105 @@ project_git_urls = {
     "linux": "https://github.com/torvalds/linux.git",
     "Chrome": "https://github.com/chromium/chromium.git"
 }
+FILE_EXTENSIONS = {".c", ".cpp", ".cxx", ".cc", ".h"}
+TEMP_DIR = os.environ["SLURM_TMPDIR"]
 
-l=os.environ["SLURM_TMPDIR"]
-for project in projects:
+def get_project_folder(project):
+    """프로젝트 폴더 경로 반환 (Chrome 예외 처리)"""
+    return join(TEMP_DIR, "chromium" if project == "Chrome" else project)
+
+def process_project(project, bigvul_data, args):
+    """프로젝트별 데이터 처리"""
     print(f"{project} started!")
-    #os.system(f"tar -xf /data/project_files/{project}.tar.gz -C {l}")
-    df1=bigvul_data[(bigvul_data["flaw_line_index"].notnull())&(bigvul_data["project"]==project)][["commit_id","unique_id","flaw_line_index"]]
-    commits=set()
-    if project=="Chrome":
-        project_folder=join(os.environ["SLURM_TMPDIR"],"chromium")
-    else:
-        project_folder=join(os.environ["SLURM_TMPDIR"],project)
+    
+    def generate_neg_files(files, dataset_type, commit_hash):
+        global TOTAL_FILE_COUNT
+        data = []
+        for old_file_path in tqdm(files, total=len(files)):
+            _, file_extension = os.path.splitext(old_file_path)
+            new_file_name_path = str(TOTAL_FILE_COUNT)
+            if file_extension in FILE_EXTENSIONS:
+                file_dict = {}
+                file_dict["commit_hash"] = commit_hash
+                file_dict["unique_id"] = "/".join(old_file_path.split("/")[4:])
+                file_dict["vulnerable_line_numbers"] = ""
+                file_dict["dataset_type"] = dataset_type
+                shutil.copyfile(old_file_path, os.path.join(output_folder, new_file_name_path))
+                TOTAL_FILE_COUNT += 1
+                data.append(file_dict)
+        return data
+    
+    df1 = bigvul_data[(bigvul_data["flaw_line_index"].notnull()) & (bigvul_data["project"] == project)][["commit_id", "unique_id", "flaw_line_index"]]
+    commits = set()
+    project_folder = get_project_folder(project)
     if not exists(project_folder):
-        os.system(f"git clone {project_git_urls[project]} {project_folder}")
+        os.system(f"git clone {PROJECT_GIT_URLS[project]} {project_folder}")
     gr = Git(project_folder)
     for i in gr.get_list_commits():
         commits.add(i.hash)
-    commit_dates=[]
-    for _,row in df1.iterrows():
+    commit_dates = []
+    for _, row in df1.iterrows():
         if row["commit_id"] in commits:
-            commit_dates.append(gr.get_commit(row["commit_id"]).committer_date.strftime('%Y-%m-%d'))
+            commit_dates.append(gr.get_commit(row["commit_id"]).committer_date)
+        else:
+            commit_dates.append(None)
+    df1["commit_date"] = commit_dates
+    df1 = df1.dropna(subset=["commit_date"])
+    df1["commit_date"] = pd.to_datetime(df1["commit_date"], utc=True)
+    train_last_date = df1["commit_date"].max() - timedelta(days=30)
+    test_last_date = df1["commit_date"].max() - timedelta(days=2)
+    train_commits = df1[df1["commit_date"] <= train_last_date]["commit_id"].unique()
+    test_commits = df1[(df1["commit_date"] > train_last_date) & (df1["commit_date"] <= test_last_date)]["commit_id"].unique()
+    train_last_commit_hash = df1[df1["commit_id"].isin(train_commits)]["commit_date"].idxmax()
+    test_last_commit_hash = df1[df1["commit_id"].isin(test_commits)]["commit_date"].idxmax()
+    if pd.isna(train_last_commit_hash):
+        train_last_commit_hash = df1["commit_date"].idxmax()
+    if pd.isna(test_last_commit_hash):
+        test_last_commit_hash = df1["commit_date"].idxmax()
+    train_last_commit_hash = df1.loc[train_last_commit_hash, "commit_id"]
+    test_last_commit_hash = df1.loc[test_last_commit_hash, "commit_id"]
+    main_branch = list(gr.get_head().branches)[0]
     
-    df1["commit_date"]=commit_dates
-    # data_folder=f"/data/{project}" useless
-    # if not exists(data_folder):
-    #     os.makedirs(data_folder)
-
-    df1['commit_date']=pd.to_datetime(df1['commit_date'])
-    df1['commit_date']=df1['commit_date'].dt.strftime('%Y-%m-%d')
-    df1.sort_values(by=["commit_date"], inplace=True)
-    splits=["train_val"]*int(df1.shape[0]*0.8)+["test"]*(df1.shape[0]-int(df1.shape[0]*0.8))
-    df1["dataset_type"]=splits
-    
-    # os.system(f"tar -xf /data/project_files/{project}.tar.gz -C {l}")
-    output_folder= join(os.environ["SLURM_TMPDIR"],f"{project}_source_code","source_code")
-    if project=="Chrome":
-        project_folder=join(os.environ["SLURM_TMPDIR"],"chromium")
-    else:
-        project_folder=join(os.environ["SLURM_TMPDIR"],project)
-    bigvul_data_partial=bigvul_data[bigvul_data["unique_id"].isin(df1["unique_id"])][["unique_id","processed_func"]]
-    dict1=bigvul_data_partial.set_index('unique_id').to_dict("dict")["processed_func"]
-
-    df1['processed_func'] = df1['unique_id'].map(dict1)
-
+    # Prepare output folder
+    output_folder = join(TEMP_DIR, f"{project}_source_code", "source_code")
     if not exists(output_folder):
-            os.makedirs(output_folder)
-    TOTAL_FILE_COUNT=0
-    for i,row in tqdm(df1.iterrows(),total=len(df1)):
-                 new_file_name_path=str(TOTAL_FILE_COUNT)
-                 with open(os.path.join(output_folder,new_file_name_path),"w") as f:
-                    f.write(row["processed_func"])
-                 TOTAL_FILE_COUNT+=1
-
-    df1=df1.drop(["processed_func"],axis=1)
-    df1.rename(columns={'flaw_line_index': 'vulnerable_line_numbers'}, inplace=True)
+        os.makedirs(output_folder)
+    global TOTAL_FILE_COUNT
+    TOTAL_FILE_COUNT = 0
     
-    
-    def generate_neg_files(files,dataset_type,commit_hash):
-        global TOTAL_FILE_COUNT
-        data=[]
-        for old_file_path in tqdm(files,total=len(files)):
-                    _, file_extension = os.path.splitext(old_file_path)
-                    new_file_name_path=str(TOTAL_FILE_COUNT)
-                    if file_extension in file_extensions:
-                         dict1={}
-                         dict1["commit_hash"]=commit_hash
-                         dict1["unique_id"]="/".join(old_file_path.split("/")[4:])
-                         dict1["vulnerable_line_numbers"]=""
-                         dict1["dataset_type"]=dataset_type
-                         shutil.copyfile(old_file_path,os.path.join(output_folder,new_file_name_path))
-                         TOTAL_FILE_COUNT+=1
-                         data.append(dict1)
-        return data
-
-
-    file_extensions={".c",".cpp",".cxx",".cc",".h"}
-
-
-    gr = Git(project_folder)
-    main_branch=list(gr.get_head().branches)[0]
-    print("Current Branch:",gr.get_head().branches,main_branch)
-
-    train_last_Date=datetime.strptime(df1[df1["dataset_type"]=="train_val"].iloc[-1]["commit_date"],"%Y-%m-%d")+timedelta(days=2)
-    train_last_commit=list(Repository(project_folder, to=train_last_Date).traverse_commits())[-1]
-    train_last_commit_hash=train_last_commit.hash
-    train_last_commit_hash_date= train_last_commit.committer_date.strftime('%Y-%m-%d')
     gr.checkout(train_last_commit_hash)
-    print("Current Branch:",gr.get_head().branches)
-    train_negative_files=gr.files()
-    train_neg_data=generate_neg_files(train_negative_files,"train_val",train_last_commit_hash)
-    print("Train Last Date",train_last_commit_hash_date)
-
-
-    gr.checkout(main_branch)
-    print("Current Branch:",gr.get_head().branches)
-
-    test_last_Date=datetime.strptime(df1[df1["dataset_type"]=="test"].iloc[-1]["commit_date"],"%Y-%m-%d")+timedelta(days=2)
-    test_last_commit=list(Repository(project_folder, to=test_last_Date).traverse_commits())[-1]
-    test_last_commit_hash=test_last_commit.hash
-    test_last_commit_hash_date= test_last_commit.committer_date.strftime('%Y-%m-%d')
-    print("Test Last Date",test_last_commit_hash_date)
-
+    print("Current Branch:", gr.get_head().branches)
+    train_negative_files = gr.files()
+    train_neg_data = generate_neg_files(train_negative_files, "train", train_last_commit_hash)
     gr.checkout(test_last_commit_hash)
-    print("Current Branch:",gr.get_head().branches)
-    test_negative_files=gr.files()
-    test_neg_data=generate_neg_files(test_negative_files,"test",test_last_commit_hash)
+    print("Current Branch:", gr.get_head().branches)
+    test_negative_files = gr.files()
+    test_neg_data = generate_neg_files(test_negative_files, "test", test_last_commit_hash)
     gr.checkout(main_branch)
-
-    df1["unique_id"]=df1["unique_id"].astype(str)
-    df1=df1.drop(["commit_date"],axis=1)
-    final_dataframe=pd.concat([df1,pd.DataFrame(train_neg_data+test_neg_data)])
-    final_dataframe["file_name"]=[f"{i}" for i in range(0,final_dataframe.shape[0])]
-    final_dataframe.to_csv(args.output_csv,index=False)
+    df1["unique_id"] = df1["unique_id"].astype(str)
+    df1 = df1.drop(["commit_date"], axis=1)
+    final_dataframe = pd.concat([df1, pd.DataFrame(train_neg_data + test_neg_data)])
+    final_dataframe["file_name"] = [f"{i}" for i in range(0, final_dataframe.shape[0])]
+    final_dataframe.to_csv(args.output_csv, index=False)
     script_dir = os.path.dirname(os.path.abspath(__file__))
     tar_path = os.path.join(script_dir, "VP-Bench_Dataset/output/jasper", f"{project}_source_code.tar.gz")
-    os.chdir(join(os.environ["SLURM_TMPDIR"],f"{project}_source_code/"))
+    os.chdir(join(TEMP_DIR, f"{project}_source_code/"))
     os.system(f"tar -cf {tar_path} source_code/")
     print(f"{project} ended")
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--input-csv', default="./dataset_pipeline/VP-Bench_Dataset/output/jasper/VP-Bench_jasper_files_changed_with_targets.csv")
+    parser.add_argument('--output-csv', default="./dataset_pipeline/VP-Bench_Dataset/output/jasper/jasper_dataset.csv")
+    args = parser.parse_args()
+
+    projects = ["jasper"]  # ["FFmpeg","ImageMagick","jasper","krb5","openssl","php-src","qemu","tcpdump","linux","Chrome"]
+    bigvul_data = pd.read_csv(args.input_csv)
+
+    for project in projects:
+        process_project(project, bigvul_data, args)
+
+
+if __name__ == "__main__":
+    main()
