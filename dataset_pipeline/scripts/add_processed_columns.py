@@ -14,8 +14,8 @@ except Exception:
     sys.exit(1)
 
 # Constants
-DEFAULT_INPUT_PATH = os.path.join(os.path.dirname(__file__), "../DSGen/output/jasper/VP-Bench_jasper_files_changed_with_vulfunc.csv")
-DEFAULT_OUTPUT_PATH = os.path.join(os.path.dirname(__file__), "../DSGen/output/jasper/VP-Bench_jasper_files_changed_with_targets.csv")
+DEFAULT_INPUT_PATH = os.path.join(os.path.dirname(__file__), "../output/jasper/VP-Bench_jasper_files_changed_with_vulfunc.csv")
+DEFAULT_OUTPUT_PATH = os.path.join(os.path.dirname(__file__), "../output/jasper/VP-Bench_jasper_files_changed_with_targets.csv")
 OUTPUT_COLUMNS = [
     "unique_id",
     "project",

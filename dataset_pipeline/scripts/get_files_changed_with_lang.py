@@ -7,10 +7,13 @@ import cloudscraper
 import ssl
 import os
 from dotenv import load_dotenv
+from pathlib import Path
 
 # .env 파일에서 환경 변수 로드
 load_dotenv()
 github_token = os.getenv('GITHUB_TOKEN')
+
+BASE_DIR = Path(__file__).resolve().parent.parent
 
 if not github_token:
     print("[ERROR] .env 파일 또는 GITHUB_TOKEN 환경변수가 없습니다. GitHub API를 사용할 수 없습니다.")
@@ -66,9 +69,9 @@ def process_row(row):
 
 
 if __name__ == "__main__":
-    # VP-Bench_Dataset/output/jasper/ 기준 경로 지정
-    input_path = "output/jasper/VP-Bench_jasper_(codeLink,CVE ID).csv"
-    output_path = "output/jasper/VP-Bench_jasper_files_changed.csv"
+    # output/jasper/ 기준 경로 지정
+    input_path = BASE_DIR / "output" / "jasper" / "VP-Bench_jasper_(codeLink,CVE ID).csv"
+    output_path = BASE_DIR / "output" / "jasper" / "VP-Bench_jasper_files_changed.csv"
     df = pd.read_csv(input_path)
 
     if "commit_id" in df.columns:

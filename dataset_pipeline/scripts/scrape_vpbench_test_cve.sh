@@ -1,12 +1,13 @@
 #!/bin/bash
 # run_cve_pipeline.sh - 메인 실행 스크립트
 
-# 현재 스크립트의 디렉토리 경로 가져오기 (VP-Bench_Dataset 기준)
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# 현재 스크립트의 디렉토리 경로 가져오기 (scripts 기준)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 
 # 모듈 로드 (for문으로 간결화)
-for f in config utils download filter merge; do
+for f in nvd_config nvd_utils download_nvd filter_nvd merge_nvd; do
     source "$SCRIPT_DIR/scripts/$f.sh"
 done
 
@@ -16,7 +17,7 @@ done
 
 # 인자 및 로그 파일 설정
 TARGET=${1:-all}
-LOG_DIR="$SCRIPT_DIR/logs"
+LOG_DIR="$PROJECT_ROOT/logs"
 mkdir -p "$LOG_DIR"
 LOG_FILE="$LOG_DIR/$(date +"%Y%m%d_%H%M%S")_${TARGET}_execution.log"
 

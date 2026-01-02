@@ -8,6 +8,7 @@ from datetime import datetime, timedelta
 from collections import Counter
 import shutil
 import argparse
+from pathlib import Path
 
 # Constants
 PROJECT_GIT_URLS = {
@@ -23,11 +24,16 @@ PROJECT_GIT_URLS = {
     "Chrome": "https://github.com/chromium/chromium.git"
 }
 FILE_EXTENSIONS = {".c", ".cpp", ".cxx", ".cc", ".h"}
-TEMP_DIR = os.environ["SLURM_TMPDIR"]
+BASE_DIR = Path(__file__).resolve().parent.parent
+OUTPUT_BASE = BASE_DIR / "output" / "jasper"
+# Keep git repos and source snapshots inside the project output
+REPOSITORIES_DIR = os.environ.get("SLURM_TMPDIR", str(OUTPUT_BASE / "repository"))
+SOURCE_SNAPSHOTS_DIR = str(OUTPUT_BASE / "source_snapshots")
 
 def get_project_folder(project):
     """프로젝트 폴더 경로 반환 (Chrome 예외 처리)"""
-    return join(TEMP_DIR, "chromium" if project == "Chrome" else project)
+    # Clone directly to repository folder
+    return REPOSITORIES_DIR
 
 def process_project(project, bigvul_data, args):
     """프로젝트별 데이터 처리"""
@@ -53,7 +59,10 @@ def process_project(project, bigvul_data, args):
     df1 = bigvul_data[(bigvul_data["flaw_line_index"].notnull()) & (bigvul_data["project"] == project)][["commit_id", "unique_id", "flaw_line_index"]]
     commits = set()
     project_folder = get_project_folder(project)
-    if not exists(project_folder):
+    # Check if folder exists and is a valid git repository
+    git_folder = os.path.join(project_folder, ".git")
+    if not exists(git_folder):
+        os.makedirs(project_folder, exist_ok=True)
         os.system(f"git clone {PROJECT_GIT_URLS[project]} {project_folder}")
     gr = Git(project_folder)
     for i in gr.get_list_commits():
@@ -82,7 +91,7 @@ def process_project(project, bigvul_data, args):
     main_branch = list(gr.get_head().branches)[0]
     
     # Prepare output folder
-    output_folder = join(TEMP_DIR, f"{project}_source_code", "source_code")
+    output_folder = SOURCE_SNAPSHOTS_DIR
     if not exists(output_folder):
         os.makedirs(output_folder)
     global TOTAL_FILE_COUNT
@@ -103,16 +112,16 @@ def process_project(project, bigvul_data, args):
     final_dataframe["file_name"] = [f"{i}" for i in range(0, final_dataframe.shape[0])]
     final_dataframe.to_csv(args.output_csv, index=False)
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    tar_path = os.path.join(script_dir, "VP-Bench_Dataset/output/jasper", f"{project}_source_code.tar.gz")
-    os.chdir(join(TEMP_DIR, f"{project}_source_code/"))
-    os.system(f"tar -cf {tar_path} source_code/")
+    tar_path = BASE_DIR / "output" / "jasper" / f"{project}_source_code.tar.gz"
+    os.chdir(SOURCE_SNAPSHOTS_DIR)
+    os.system(f"tar -cf {tar_path} .")
     print(f"{project} ended")
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--input-csv', default="./dataset_pipeline/VP-Bench_Dataset/output/jasper/VP-Bench_jasper_files_changed_with_targets.csv")
-    parser.add_argument('--output-csv', default="./dataset_pipeline/VP-Bench_Dataset/output/jasper/jasper_dataset.csv")
+    parser.add_argument('--input-csv', default=str(BASE_DIR / "output" / "jasper" / "VP-Bench_jasper_files_changed_with_targets.csv"))
+    parser.add_argument('--output-csv', default=str(BASE_DIR / "output" / "jasper" / "jasper_dataset.csv"))
     args = parser.parse_args()
 
     projects = ["jasper"]  # ["FFmpeg","ImageMagick","jasper","krb5","openssl","php-src","qemu","tcpdump","linux","Chrome"]

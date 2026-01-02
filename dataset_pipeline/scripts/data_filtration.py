@@ -6,6 +6,7 @@ from os.path import join
 import os
 import pickle
 import shutil
+from pathlib import Path
 def getMD5(s):
     hl = hashlib.md5()
     hl.update(s.encode("utf-8"))
@@ -16,7 +17,8 @@ combined_functions = []
 for project_name in tqdm(projects,total=len(projects)):
     project_folder= f"/data/dataset"
     functions_folder = join(project_folder,"all_functions")
-    SLURM_source_code_path =  join(os.environ["SLURM_TMPDIR"],project_name,"source_code")
+    slurm_tmp = os.environ.get("SLURM_TMPDIR", str(Path(__file__).resolve().parent.parent / "output" / "jasper" / "source_snapshots"))
+    SLURM_source_code_path =  slurm_tmp
 
     source_code_path=join(project_folder,f"{project_name}_source_code.tar.gz")
     os.system(f'tar -xf {source_code_path} -C $SLURM_TMPDIR/{project_name}')

@@ -9,6 +9,7 @@ import time
 import traceback
 import json
 import subprocess
+import shlex
 from dataclasses import dataclass
 ssl._create_default_https_context = ssl._create_unverified_context
 import cloudscraper
@@ -23,7 +24,11 @@ load_dotenv()
 github_token = os.getenv('GITHUB_TOKEN')
 
 # Constants
-OUTPUT_BASE = "./VP-Bench_Dataset/output/jasper/"
+BASE_DIR = Path(__file__).resolve().parent.parent
+OUTPUT_BASE = BASE_DIR / "output" / "jasper"
+# Store patch/split artifacts under the project output directory
+PATCH_ROOT = OUTPUT_BASE / "patches"
+SPLIT_ROOT = OUTPUT_BASE / "extracted_functions"
 DEFAULT_CWE_ID = "others"
 
 @dataclass
@@ -70,11 +75,10 @@ def fetch_source_text(url):
         return ""
     
 # find all the line numbers that the functions begins
-def list_function_starts(filename,lang_type):
-    # found = False
-    #cmd = "ctags -x --c-kinds=fp " + filename + " | grep " + funcname
-    cmd = "ctags -x --"+lang_type+"-kinds=f " + filename
-
+def list_function_starts(filename, lang_type):
+    # Normalize path for ctags
+    filename_str = str(filename)
+    cmd = f"ctags -x --{lang_type}-kinds=f {shlex.quote(filename_str)}"
     output = subprocess.getoutput(cmd)
     lines = output.splitlines()
     line_nums = []
@@ -91,13 +95,14 @@ def list_function_starts(filename,lang_type):
 
 # given the file name and  line number(start), return the code of the line number and the endline num
 def read_function_block(filename, line_num):
-    print("opening " + filename + " on line " + str(line_num))
+    filename_str = str(filename)
+    print("opening " + filename_str + " on line " + str(line_num))
 
     code = ""
     bracket_depth = 0
     in_body = False
 
-    with open(filename, "r") as f:
+    with open(filename_str, "r") as f:
         for i, line in enumerate(f):
             if(i >= (line_num - 1)):
                 code += line
@@ -294,14 +299,14 @@ def get_file_info(changed_file, commit_hash):
 
 def download_src_and_patches(raw_url, patch, ext, project, CWE_ID, dir_path, filename, basename):
     source_text = fetch_source_text(raw_url)
-    if not os.path.exists("patchAll0206/" + ext + '/' + project + '/' + CWE_ID + '/' + dir_path):
-        os.makedirs("patchAll0206/" + ext + '/' + project + '/' + CWE_ID + '/' + dir_path)
-    source_file_path = "patchAll0206/" + ext + '/' + project + '/' + CWE_ID + '/' + dir_path + '/' + filename 
-    patch_file_path = "patchAll0206/" + ext + '/' + project + '/' + CWE_ID + '/' + dir_path + '/' + basename + '_' + 'patch.txt'
+    base_dir = PATCH_ROOT / ext / project / CWE_ID / dir_path
+    base_dir.mkdir(parents=True, exist_ok=True)
+    source_file_path = base_dir / filename
+    patch_file_path = base_dir / f"{basename}_patch.txt"
     with open(source_file_path, "w+") as source_file, open(patch_file_path, "w+") as patch_file:
         source_file.write(source_text)
         patch_file.write(patch)
-    return source_file_path, patch_file_path
+    return str(source_file_path), str(patch_file_path)
 
 def determine_language(ext):
     if ext == "c":
@@ -326,11 +331,8 @@ def apply_patches(lang_type, sourcefile_dir, patchfile_dir, filename, file_dir, 
         patch_written = False
         
         # 패치 적용된 파일 생성
-        patched_file_path = "patchAll0206/" + lang_type + '/' + project + '/' + CWE_ID + '/' + file_dir + '/' + "add_patch_" + filename
-        # ensure add_patch directory exists
-        patched_dir = os.path.dirname(patched_file_path)
-        if not os.path.exists(patched_dir):
-            os.makedirs(patched_dir)
+        patched_file_path = PATCH_ROOT / lang_type / project / CWE_ID / file_dir / f"add_patch_{filename}"
+        patched_file_path.parent.mkdir(parents=True, exist_ok=True)
         with open(sourcefile_dir, "r") as before, open(patched_file_path, "a") as after:
             lines = before.readlines()
             total_lines = len(lines)
@@ -371,34 +373,25 @@ def extract_functions(patched_file_path, lang_type, filename, project, CWE_ID, v
                 vulnerable_functions.append((func_body, start_line, lang_type, filename))
                 
                 # 취약 함수 저장 (vul 디렉토리)
-                vul_dir = "./split0206/vul" + '/' + project + '/' + CWE_ID
-                if not os.path.exists(vul_dir):
-                    os.makedirs(vul_dir)
-                vul_file_path = vul_dir + '/' + CWE_ID + "_" + "add_patch_" + str(end_line) + "_" + filename
-                vul_file_dir = os.path.dirname(vul_file_path)
-                if not os.path.exists(vul_file_dir):
-                    os.makedirs(vul_file_dir)
+                vul_dir = SPLIT_ROOT / "vul" / project / CWE_ID
+                vul_dir.mkdir(parents=True, exist_ok=True)
+                vul_file_path = vul_dir / f"{CWE_ID}_add_patch_{end_line}_{filename}"
                 with open(vul_file_path, "w+") as vul_file:
                     vul_file.write(func_body)
                 
                 # 취약 함수 저장 (vul0 디렉토리)
-                vul0_dir = "./split0206/vul0" + '/' + project
-                if not os.path.exists(vul0_dir):
-                    os.makedirs(vul0_dir)
+                vul0_dir = SPLIT_ROOT / "vul0" / project
+                vul0_dir.mkdir(parents=True, exist_ok=True)
                 file_name = str(file_counter)
-                vul0_file_path = vul0_dir + '/' + file_name + '.' + lang_type
+                vul0_file_path = vul0_dir / f"{file_name}.{lang_type}"
                 with open(vul0_file_path, "w+") as vul0_file:
                     vul0_file.write(func_body)
                 file_counter += 1
             else:
                 # 비취약 함수 저장 (nonevul 디렉토리)
-                nonevul_dir = "./split0206/nonevul" + '/' + project
-                if not os.path.exists(nonevul_dir):
-                    os.makedirs(nonevul_dir)
-                nonevul_file_path = nonevul_dir + '/' + "add_patch_" + str(end_line) + "_" + filename
-                nonevul_file_dir = os.path.dirname(nonevul_file_path)
-                if not os.path.exists(nonevul_file_dir):
-                    os.makedirs(nonevul_file_dir)
+                nonevul_dir = SPLIT_ROOT / "nonevul" / project
+                nonevul_dir.mkdir(parents=True, exist_ok=True)
+                nonevul_file_path = nonevul_dir / f"add_patch_{end_line}_{filename}"
                 with open(nonevul_file_path, "w+") as nonevul_file:
                     nonevul_file.write(func_body)
         print("一共有 %d 个" % vulnerable_count)
@@ -420,11 +413,8 @@ def mark_patch_and_extract_funcs(lang_type, sourcefile_dir, patchfile_dir, filen
         patch_written = False
         
         # 패치 적용된 파일 생성
-        patched_file_path = "patchAll0206/" + lang_type + '/' + project + '/' + CWE_ID + '/' + file_dir + '/' + "add_patch_" + filename
-        # ensure add_patch directory exists
-        patched_dir = os.path.dirname(patched_file_path)
-        if not os.path.exists(patched_dir):
-            os.makedirs(patched_dir)
+        patched_file_path = PATCH_ROOT / lang_type / project / CWE_ID / file_dir / f"add_patch_{filename}"
+        patched_file_path.parent.mkdir(parents=True, exist_ok=True)
         with open(sourcefile_dir, "r") as before, open(patched_file_path, "a") as after:
             lines = before.readlines()
             total_lines = len(lines)
@@ -463,34 +453,25 @@ def mark_patch_and_extract_funcs(lang_type, sourcefile_dir, patchfile_dir, filen
                 vulnerable_functions.append((func_body, start_line, lang_type, filename))
                 
                 # 취약 함수 저장 (vul 디렉토리)
-                vul_dir = "./split0206/vul" + '/' + project + '/' + CWE_ID
-                if not os.path.exists(vul_dir):
-                    os.makedirs(vul_dir)
-                vul_file_path = vul_dir + '/' + CWE_ID + "_" + "add_patch_" + str(end_line) + "_" + filename
-                vul_file_dir = os.path.dirname(vul_file_path)
-                if not os.path.exists(vul_file_dir):
-                    os.makedirs(vul_file_dir)
+                vul_dir = SPLIT_ROOT / "vul" / project / CWE_ID
+                vul_dir.mkdir(parents=True, exist_ok=True)
+                vul_file_path = vul_dir / f"{CWE_ID}_add_patch_{end_line}_{filename}"
                 with open(vul_file_path, "w+") as vul_file:
                     vul_file.write(func_body)
                 
                 # 취약 함수 저장 (vul0 디렉토리)
-                vul0_dir = "./split0206/vul0" + '/' + project
-                if not os.path.exists(vul0_dir):
-                    os.makedirs(vul0_dir)
+                vul0_dir = SPLIT_ROOT / "vul0" / project
+                vul0_dir.mkdir(parents=True, exist_ok=True)
                 file_name = str(file_counter)
-                vul0_file_path = vul0_dir + '/' + file_name + '.' + lang_type
+                vul0_file_path = vul0_dir / f"{file_name}.{lang_type}"
                 with open(vul0_file_path, "w+") as vul0_file:
                     vul0_file.write(func_body)
                 file_counter += 1
             else:
                 # 비취약 함수 저장 (nonevul 디렉토리)
-                nonevul_dir = "./split0206/nonevul" + '/' + project
-                if not os.path.exists(nonevul_dir):
-                    os.makedirs(nonevul_dir)
-                nonevul_file_path = nonevul_dir + '/' + "add_patch_" + str(end_line) + "_" + filename
-                nonevul_file_dir = os.path.dirname(nonevul_file_path)
-                if not os.path.exists(nonevul_file_dir):
-                    os.makedirs(nonevul_file_dir)
+                nonevul_dir = SPLIT_ROOT / "nonevul" / project
+                nonevul_dir.mkdir(parents=True, exist_ok=True)
+                nonevul_file_path = nonevul_dir / f"add_patch_{end_line}_{filename}"
                 with open(nonevul_file_path, "w+") as nonevul_file:
                     nonevul_file.write(func_body)
         print("一共有 %d 个" % vulnerable_count)
