@@ -69,3 +69,24 @@ else
     SLURM_TMPDIR="$SCRIPT_DIR/output/jasper/repository" python3 scripts/data_collection.py --input-csv "$STEP5_IN" --output-csv "$STEP5_OUT"
     echo "Step 5 완료: $STEP5_OUT 생성 여부를 확인하세요."
 fi
+
+# Step 5.5: all_functions pickle 생성
+STEP55_OUT="$DATASET_DIR/output/jasper/all_functions/jasper_new_all_functions.pickle"
+if [ -f "$STEP55_OUT" ]; then
+    echo "Step 5.5 결과 파일이 이미 존재합니다. 스킵합니다."
+else
+    mkdir -p "$DATASET_DIR/output/jasper/all_functions"
+    cd "$SCRIPT_DIR"
+    python3 scripts/generate_all_functions.py --project jasper --lang c
+    echo "Step 5.5 완료: $STEP55_OUT 생성 여부를 확인하세요."
+fi
+
+# Step 6: data_filtration.py 실행
+STEP6_OUT="$DATASET_DIR/output/jasper/real_vul_functions_dataset.csv"
+if [ -f "$STEP6_OUT" ]; then
+    echo "Step 6 결과 파일이 이미 존재합니다. 스킵합니다."
+else
+    cd "$SCRIPT_DIR"
+    python3 scripts/data_filtration.py --projects jasper
+    echo "Step 6 완료: $STEP6_OUT 생성 여부를 확인하세요."
+fi
