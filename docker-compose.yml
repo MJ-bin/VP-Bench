@@ -34,7 +34,13 @@ services:
     working_dir: /app
     tty: true
     stdin_open: true
-    gpus: all
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
     # Allow entering a bash shell and running commands directly if needed
     command: ["/bin/bash", "-lc", "echo 'LineVul Container Ready' && bash"]
 
@@ -47,6 +53,12 @@ services:
     working_dir: /
     tty: true
     stdin_open: true
-    gpus: all
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
     # Allow entering a bash shell and running commands directly if needed
     command: ["/bin/bash", "-lc", "echo 'PDBERT Container Ready' && bash"]
