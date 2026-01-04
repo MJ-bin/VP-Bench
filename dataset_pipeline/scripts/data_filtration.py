@@ -35,11 +35,11 @@ for project_name in tqdm(projects, total=len(projects)):
         tar.extractall(path=SLURM_source_code_path)
     
     # Read from Step 4 output to preserve vulnerable_line_numbers
-    csv_data = pd.read_csv(project_folder / f"VP-Bench_{project_name}_files_changed_with_targets.csv")
-    csv_data["vulnerable_line_numbers"] = csv_data["flaw_line_index"].fillna("").astype(str)
-    csv_data["file_name"] = csv_data["unique_id"].astype(str)  # file_name = unique_id
-    csv_data["commit_hash"] = csv_data["commit_id"]
-    csv_data["dataset_type"] = "all"  # Default value
+    csv_data = pd.read_csv(project_folder / f"{project_name}_dataset.csv")
+    csv_data["vulnerable_line_numbers"] = csv_data["vulnerable_line_numbers"].fillna("").astype(str)
+    csv_data["file_name"] = csv_data["file_name"].astype(str)  # file_name = unique_id
+    csv_data["commit_hash"] = csv_data["commit_hash"]
+    csv_data["dataset_type"] = csv_data["dataset_type"]  # Default value
     
     with open(functions_folder / f"{project_name}_new_all_functions.pickle", "rb") as output_file:
         all_functions = pickle.load(output_file)
@@ -49,7 +49,7 @@ for project_name in tqdm(projects, total=len(projects)):
         vul_file = row["file_name"]
         with open(join(SLURM_source_code_path, vul_file), "r", encoding="ISO-8859-1") as f:
             source_code = "".join(f.readlines())
-            combined_functions.append({"processed_func": source_code, "target": 1, "vulnerable_line_numbers": row["vulnerable_line_numbers"], "project": project_name, "commit_hash": row["commit_hash"], "dataset_type": row["dataset_type"]})
+            combined_functions.append({"file_name": row["file_name"], "vulnerable_line_numbers": row["vulnerable_line_numbers"], "dataset_type": row["dataset_type"], "commit_hash": row["commit_hash"], "project": project_name, "target": 1})
         vul_hash = getMD5("".join(source_code.split()))
         vul_functions_hash[vul_hash].append([vul_file, project_name])
     for _, row in csv_data[csv_data["vulnerable_line_numbers"].str.len() == 0].iterrows():
@@ -60,6 +60,6 @@ for project_name in tqdm(projects, total=len(projects)):
             for function in all_functions[file]:
                 non_vul_hash = getMD5("".join("".join(source_code[function["start"] - 1:function["end"]]).split()))
                 if non_vul_hash not in vul_functions_hash:
-                    combined_functions.append({"processed_func": "".join(source_code[function["start"] - 1:function["end"]]), "target": 0, "vulnerable_line_numbers": "", "project": project_name, "commit_hash": row["commit_hash"], "dataset_type": row["dataset_type"]})
+                    combined_functions.append({"file_name": file, "target": 0, "vulnerable_line_numbers": "", "project": project_name, "commit_hash": row["commit_hash"], "dataset_type": row["dataset_type"]})
     functions_dataset = pd.DataFrame(combined_functions)
     functions_dataset.to_csv(project_folder / "real_vul_functions_dataset.csv", index=False)

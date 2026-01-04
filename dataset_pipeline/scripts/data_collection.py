@@ -32,8 +32,9 @@ SOURCE_SNAPSHOTS_DIR = str(OUTPUT_BASE / "source_snapshots")
 
 def get_project_folder(project):
     """프로젝트 폴더 경로 반환 (Chrome 예외 처리)"""
-    # Clone directly to repository folder
-    return REPOSITORIES_DIR
+    # 프로젝트별 폴더를 분리해 충돌 방지 (Chrome는 chromium 이름 사용)
+    target_name = "chromium" if project == "Chrome" else project
+    return os.path.join(REPOSITORIES_DIR, target_name)
 
 def process_project(project, bigvul_data, args):
     """프로젝트별 데이터 처리"""
@@ -57,6 +58,10 @@ def process_project(project, bigvul_data, args):
         return data
     
     df1 = bigvul_data[(bigvul_data["flaw_line_index"].notnull()) & (bigvul_data["project"] == project)][["commit_id", "unique_id", "flaw_line_index"]]
+    # processed_func 매핑으로 양성 코드 복원
+    processed_funcs = bigvul_data[bigvul_data["unique_id"].isin(df1["unique_id"])]
+    func_map = processed_funcs.set_index("unique_id")["processed_func"].to_dict()
+    df1["processed_func"] = df1["unique_id"].map(func_map)
     commits = set()
     project_folder = get_project_folder(project)
     # Check if folder exists and is a valid git repository
@@ -76,44 +81,52 @@ def process_project(project, bigvul_data, args):
     df1["commit_date"] = commit_dates
     df1 = df1.dropna(subset=["commit_date"])
     df1["commit_date"] = pd.to_datetime(df1["commit_date"], utc=True)
-    train_last_date = df1["commit_date"].max() - timedelta(days=30)
-    test_last_date = df1["commit_date"].max() - timedelta(days=2)
-    train_commits = df1[df1["commit_date"] <= train_last_date]["commit_id"].unique()
-    test_commits = df1[(df1["commit_date"] > train_last_date) & (df1["commit_date"] <= test_last_date)]["commit_id"].unique()
-    train_last_commit_hash = df1[df1["commit_id"].isin(train_commits)]["commit_date"].idxmax()
-    test_last_commit_hash = df1[df1["commit_id"].isin(test_commits)]["commit_date"].idxmax()
-    if pd.isna(train_last_commit_hash):
-        train_last_commit_hash = df1["commit_date"].idxmax()
-    if pd.isna(test_last_commit_hash):
-        test_last_commit_hash = df1["commit_date"].idxmax()
-    train_last_commit_hash = df1.loc[train_last_commit_hash, "commit_id"]
-    test_last_commit_hash = df1.loc[test_last_commit_hash, "commit_id"]
+    # 커밋 시간 기준 정렬 후 80/20 스플릿
+    df1 = df1.sort_values(by="commit_date").reset_index(drop=True)
+    split_idx = int(df1.shape[0] * 0.8)
+    df1.loc[: split_idx - 1, "dataset_type"] = "train_val"
+    df1.loc[split_idx:, "dataset_type"] = "test"
+    # 구간별 마지막 커밋 해시 선택
+    train_last_commit_hash = df1.loc[split_idx - 1, "commit_id"] if split_idx > 0 else df1.loc[df1.index[-1], "commit_id"]
+    test_last_commit_hash = df1.loc[df1.index[-1], "commit_id"]
     main_branch = list(gr.get_head().branches)[0]
     
-    # Prepare output folder
+    # Prepare output folder (프로젝트별 분리)
     output_folder = SOURCE_SNAPSHOTS_DIR
     if not exists(output_folder):
         os.makedirs(output_folder)
     global TOTAL_FILE_COUNT
     TOTAL_FILE_COUNT = 0
+
+    # 양성 코드 스냅샷 먼저 기록 (컬럼 일관성: vulnerable_line_numbers, commit_hash 사용)
+    df1.rename(columns={"flaw_line_index": "vulnerable_line_numbers"}, inplace=True)
+    df1["commit_hash"] = df1["commit_id"]
+    df1 = df1.drop(columns=["commit_id"])
+    for _, row in tqdm(df1.iterrows(), total=len(df1)):
+        if pd.isna(row.get("processed_func", None)):
+            continue
+        new_file_name_path = str(TOTAL_FILE_COUNT)
+        with open(os.path.join(output_folder, new_file_name_path), "w") as f:
+            f.write(str(row["processed_func"]))
+        TOTAL_FILE_COUNT += 1
     
     gr.checkout(train_last_commit_hash)
     print("Current Branch:", gr.get_head().branches)
     train_negative_files = gr.files()
-    train_neg_data = generate_neg_files(train_negative_files, "train", train_last_commit_hash)
+    train_neg_data = generate_neg_files(train_negative_files, "train_val", train_last_commit_hash)
     gr.checkout(test_last_commit_hash)
     print("Current Branch:", gr.get_head().branches)
     test_negative_files = gr.files()
     test_neg_data = generate_neg_files(test_negative_files, "test", test_last_commit_hash)
     gr.checkout(main_branch)
     df1["unique_id"] = df1["unique_id"].astype(str)
-    df1 = df1.drop(["commit_date"], axis=1)
-    final_dataframe = pd.concat([df1, pd.DataFrame(train_neg_data + test_neg_data)])
+    df1 = df1.drop(["commit_date", "processed_func"], axis=1)
+    final_dataframe = pd.concat([df1, pd.DataFrame(train_neg_data + test_neg_data)], ignore_index=True)
     final_dataframe["file_name"] = [f"{i}" for i in range(0, final_dataframe.shape[0])]
     final_dataframe.to_csv(args.output_csv, index=False)
     script_dir = os.path.dirname(os.path.abspath(__file__))
     tar_path = BASE_DIR / "output" / "jasper" / f"{project}_source_code.tar.gz"
-    os.chdir(SOURCE_SNAPSHOTS_DIR)
+    os.chdir(output_folder)
     os.system(f"tar -cf {tar_path} .")
     print(f"{project} ended")
 
