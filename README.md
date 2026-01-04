@@ -18,9 +18,9 @@
 
 ## 빌드 성공여부 검증
 * linevul : 
-`bats ./docker/linevul/test_image.bats`
+`sudo apt update && sudo apt install -y bats && bats ./docker/linevul/test_image.bats`
 * pdbert : 
-`bats ./docker/pdbert/test_image.bats`
+`sudo apt update && sudo apt install -y bats && bats ./docker/pdbert/test_image.bats`
 
 ## 2. 비교할 데이터 셋 준비
 ### 사전 준비 사항
