@@ -6,7 +6,7 @@ setup_file() {
 
 # -------------------------------------------------------------------
 
-@test "0. jasper 데이터셋 생성 for pdbert" {
+@test "1. jasper 데이터셋 생성 for pdbert" {
     # prepare_dataset.py를 사용하여 jasper 데이터셋 JSON 생성
     # (tar 압축 해제 + CSV → JSON 변환을 모두 처리)
     run docker exec pdbert python /PDBERT/prepare_dataset.py jasper
@@ -39,7 +39,7 @@ setup_file() {
 }
 
 
-@test "1. PDBERT 학습 및 평가 (Jasper 데이터셋)" {
+@test "2. PDBERT 학습 및 평가 (Jasper 데이터셋)" {
     # pdbert_realvul.jsonnet은 Dockerfile에서 이미 생성됨
     run docker exec pdbert bash -c "cd /PDBERT/downstream && python train_eval_from_config.py -config configs/vul_detect/pdbert_realvul.jsonnet -task_name vul_detect/realvul -average binary"
 
