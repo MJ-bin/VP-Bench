@@ -156,121 +156,76 @@ def iter_patch_lines(filename):
  return:
  [[['6835', '12'], ['6835', '16'], 1, 5, [4], [5, 10, 11, 12, 14]]]
 '''
-def parse_hunk(filename, diff_start_line, count, len_diff_start_lines, hunks):
-    """
-    diff 블록을 파싱하여 anchor 정보를 추출합니다.
-    
-    이 함수는 주어진 diff 파일에서 특정 diff 블록을 분석하여,
-    before/after 라인 정보, minus/plus 라인 수, 위치 등을 계산하고
-    hunks 리스트에 추가합니다.
-    
-    Args:
-        filename (str): diff 파일 경로
-        diff_start_line (int): diff 블록 시작 라인
-        count (int): 현재 블록 인덱스
-        len_diff_start_lines (int): 총 diff 블록 수
-        hunks (list): anchor 정보를 저장할 리스트
-    
-    Returns:
-        list: 업데이트된 hunks 리스트
-    """
-    removed_count = 0  # 삭제된 라인 수
-    added_count = 0   # 추가된 라인 수
-    old_range = None    # @@ 라인의 before 정보 (시작 라인, 라인 수)
-    new_range = None     # @@ 라인의 after 정보 (시작 라인, 라인 수)
-    hunk_header_line = None  # @@ 라인의 라인 번호
-    removed_offsets = []   # 삭제된 라인의 상대 위치 리스트
-    added_offsets = []    # 추가된 라인의 상대 위치 리스트
-    hunk_lines = []       # 패치 라인들
-    current_block = 0    # 현재 블록 번호
-    
-    # 파일을 라인별로 순회하며 diff 블록 파싱
-    for j, l in iter_patch_lines(filename):
-        # 마지막 diff 블록인 경우
-        if count == len_diff_start_lines:
-            # diff 블록의 끝에 도달한 경우
-            if j == diff_start_line - 1:
-                hunk_lines.append(l)
-                # 삭제/추가 라인 카운트 및 위치 기록
-                if l.startswith("-"):
-                    removed_count += 1
-                    removed_offsets.append(j - hunk_header_line)
-                if l.startswith("+"):
-                    added_count += 1
-                    added_offsets.append(j - hunk_header_line)
-                current_block = j
-                # before/after 정보를 정수 리스트로 변환
-                old_range = list(map(int, old_range))
-                new_range = list(map(int, new_range))
-                # hunks 리스트에 정보 추가
-                if len(hunks) == 0:
-                    hunks.append(HunkInfo(
-                        old_start=old_range[0], old_len=old_range[1], new_start=new_range[0], new_len=new_range[1],
-                        removed_count=removed_count, added_count=added_count, removed_offsets=removed_offsets, added_offsets=added_offsets,
-                        hunk_lines=hunk_lines, insert_after=new_range[0], diff_value=removed_count, prev_new_end=0
-                    ))
-                else:
-                    diff_value = hunks[-1].diff_value + removed_count
-                    insert_after = new_range[0] + hunks[-1].diff_value
-                    last_end = hunks[-1].new_start + hunks[-1].new_len - 1
-                    hunks.append(HunkInfo(
-                        old_start=old_range[0], old_len=old_range[1], new_start=new_range[0], new_len=new_range[1],
-                        removed_count=removed_count, added_count=added_count, removed_offsets=removed_offsets, added_offsets=added_offsets,
-                        hunk_lines=hunk_lines, insert_after=insert_after, diff_value=diff_value, prev_new_end=last_end
-                    ))
-                break
+def parse_range(raw_range):
+    raw = raw_range[1:]
+    if "," in raw:
+        start_str, len_str = raw.split(",", 1)
+        return int(start_str), int(len_str)
+    return int(raw), 1
 
-            # diff 블록 내의 라인을 처리
-            if current_block <= j < diff_start_line - 1:
-                hunk_lines.append(l)
-                # @@ 라인 파싱: before/after 정보 추출
-                if l.startswith("@@ "):
-                    hunk_header_line = j
-                    pos = l.find("@@ ")
-                    end = l.find(" @@ ")
-                    modified = l[pos + 3:end]
-                    modified = modified.split(" ")
-                    old_range = modified[0].replace("-", "").split(",")
-                    new_range = modified[1].replace("+", "").split(",")
 
-                # 삭제/추가 라인 카운트 및 위치 기록
-                if l.startswith("-"):
-                    removed_count += 1
-                    removed_offsets.append(j - hunk_header_line)
-                if l.startswith("+"):
-                    added_count += 1
-                    added_offsets.append(j - hunk_header_line)
-        # 마지막 블록이 아닌 경우
-        elif j < current_block:
-            continue
-        else:
-            current_block = j
-            # before/after 정보가 있는 경우 hunks에 추가
-            if old_range is not None and new_range is not None:
-                old_range = list(map(int, old_range))
-                new_range = list(map(int, new_range))
-                if len(hunks) == 0:
-                    hunks.append(HunkInfo(
-                        old_start=old_range[0], old_len=old_range[1], new_start=new_range[0], new_len=new_range[1],
-                        removed_count=removed_count, added_count=added_count, removed_offsets=removed_offsets, added_offsets=added_offsets,
-                        hunk_lines=hunk_lines, insert_after=new_range[0], diff_value=removed_count, prev_new_end=0
-                    ))
-                else:
-                    diff_value = hunks[-1].diff_value + removed_count
-                    insert_after = new_range[0] + hunks[-1].diff_value
-                    last_end = hunks[-1].new_start + hunks[-1].new_len - 1
-                    hunks.append(HunkInfo(
-                        old_start=old_range[0], old_len=old_range[1], new_start=new_range[0], new_len=new_range[1],
-                        removed_count=removed_count, added_count=added_count, removed_offsets=removed_offsets, added_offsets=added_offsets,
-                        hunk_lines=hunk_lines, insert_after=insert_after, diff_value=diff_value, prev_new_end=last_end
-                    ))
-            break
-    return hunks
-
-def collect_hunks(filename,diff_start_lines):
+def collect_hunks(patch_path):
+    """단순하고 일관된 hunk 파싱: header부터 다음 header 전까지 수집"""
     hunks = []
-    for count, diff_start_line in enumerate(diff_start_lines, 1):
-        hunks = parse_hunk(filename, diff_start_line, count, len(diff_start_lines), hunks)
+    cumulative_removed = 0
+    prev_new_end = 0
+
+    with open(patch_path, "r") as patch_file:
+        lines = patch_file.readlines()
+
+    idx = 0
+    total = len(lines)
+    while idx < total:
+        line = lines[idx]
+        if not line.startswith("@@ "):
+            idx += 1
+            continue
+
+        header = line
+        section = header[header.find("@@ ") + 3: header.rfind(" @@")].strip()
+        old_raw, new_raw = section.split(" ")
+        old_start, old_len = parse_range(old_raw)
+        new_start, new_len = parse_range(new_raw)
+
+        hunk_lines = [header]
+        removed_offsets, added_offsets = [], []
+        removed_count = 0
+        added_count = 0
+
+        inner_idx = idx + 1
+        while inner_idx < total and not lines[inner_idx].startswith("@@ "):
+            hline = lines[inner_idx]
+            hunk_lines.append(hline)
+            if hline.startswith("-"):
+                removed_count += 1
+                removed_offsets.append(inner_idx - idx)
+            elif hline.startswith("+"):
+                added_count += 1
+                added_offsets.append(inner_idx - idx)
+            inner_idx += 1
+
+        diff_value = cumulative_removed + removed_count
+        last_end = new_start + new_len - 1
+
+        hunks.append(HunkInfo(
+            old_start=old_start,
+            old_len=old_len,
+            new_start=new_start,
+            new_len=new_len,
+            removed_count=removed_count,
+            added_count=added_count,
+            removed_offsets=removed_offsets,
+            added_offsets=added_offsets,
+            hunk_lines=hunk_lines,
+            insert_after=new_start + cumulative_removed,
+            diff_value=diff_value,
+            prev_new_end=prev_new_end
+        ))
+
+        cumulative_removed = diff_value
+        prev_new_end = last_end
+        idx = inner_idx
+
     return hunks
 
 def parse_changed_files(row):
@@ -318,44 +273,49 @@ def determine_language(ext):
 
 def apply_patches(lang_type, sourcefile_dir, patchfile_dir, filename, file_dir, project, CWE_ID):
     # 패치 파일 분석: diff 블록 파싱
-    num = list_hunk_starts(patchfile_dir)
-    hunks = collect_hunks(patchfile_dir, num)
-    hunk_index = 0
-    total_hunks = len(hunks)
+    hunks = collect_hunks(patchfile_dir)
+
+    # 원본과 출력 준비
+    with open(sourcefile_dir, "r") as before:
+        src_lines = before.readlines()
+
+    patched_file_path = PATCH_ROOT / lang_type / project / CWE_ID / file_dir / f"add_patch_{filename}"
+    patched_file_path.parent.mkdir(parents=True, exist_ok=True)
+
+    patched_lines = []
+    cursor = 0  # 0-indexed 현재 소스 포인터
+
     for hunk in hunks:
-        hunk_index += 1
-        new_start = hunk.new_start
-        new_len = hunk.old_len + hunk.added_count
-        new_end = new_start + hunk.new_len - 1
-        prev_new_end = hunk.prev_new_end
-        patch_written = False
-        
-        # 패치 적용된 파일 생성
-        patched_file_path = PATCH_ROOT / lang_type / project / CWE_ID / file_dir / f"add_patch_{filename}"
-        patched_file_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(sourcefile_dir, "r") as before, open(patched_file_path, "a") as after:
-            lines = before.readlines()
-            total_lines = len(lines)
-            for i in range(total_lines):
-                if prev_new_end - 1 < i <= new_end - 1:
-                    if i == 0:
-                        after.write(lines[i])
-                        continue
-                    if (new_start - 1 <= i <= new_end - 1):
-                        if patch_written == False:
-                            for hunk_line in hunk.hunk_lines[1:]:
-                                if hunk_line.startswith("+"):
-                                    hunk_line = hunk_line.replace("+", "//fix_flaw_line_below:\n//", 1)
-                                if hunk_line.startswith("-"):
-                                    hunk_line = hunk_line.replace("-", "//flaw_line_below:\n", 1)
-                                if not hunk_line.endswith("\n"):
-                                    hunk_line = hunk_line + "\n"
-                                after.write(hunk_line)
-                            patch_written = True
-                    else:
-                        after.write(lines[i])
-                if hunk_index == total_hunks and new_end < total_lines and i > new_end - 1:
-                    after.write(lines[i])
+        start_idx = max(hunk.new_start - 1, 0)
+        end_idx = max(start_idx + hunk.new_len, start_idx)
+
+        # 패치 앞부분 복사
+        patched_lines.extend(src_lines[cursor:start_idx])
+
+        # hunk 라인 적용 (+/-만 주석화, @@/컨텍스트는 스킵)
+        for hline in hunk.hunk_lines[1:]:
+            if hline.startswith("@@"):
+                continue
+            if hline.startswith("+"):
+                out = hline.replace("+", "//fix_flaw_line_below:\n//", 1)
+            elif hline.startswith("-"):
+                out = hline.replace("-", "//flaw_line_below:\n", 1)
+            else:
+                continue
+            if not out.endswith("\n"):
+                out += "\n"
+            patched_lines.append(out)
+
+        # 소스 커서를 패치 범위 끝으로 이동 (new_len 기준)
+        cursor = min(end_idx, len(src_lines))
+
+    # 마지막 테일 복사
+    patched_lines.extend(src_lines[cursor:])
+
+    # 파일 덮어쓰기
+    with open(patched_file_path, "w") as after:
+        after.writelines(patched_lines)
+
     return patched_file_path
 
 def extract_functions(patched_file_path, lang_type, filename, project, CWE_ID, vulnerable_functions, vulnerable_count, file_counter):
@@ -400,45 +360,44 @@ def extract_functions(patched_file_path, lang_type, filename, project, CWE_ID, v
 
 def mark_patch_and_extract_funcs(lang_type, sourcefile_dir, patchfile_dir, filename, file_dir, project, CWE_ID, vulnerable_functions, vulnerable_count, file_counter, expanded_rows):
     # 패치 파일 분석: diff 블록 파싱
-    num = list_hunk_starts(patchfile_dir)
-    hunks = collect_hunks(patchfile_dir, num)
-    hunk_index = 0
-    total_hunks = len(hunks)
+    hunks = collect_hunks(patchfile_dir)
+
+    # 원본과 출력 준비
+    with open(sourcefile_dir, "r") as before:
+        src_lines = before.readlines()
+
+    patched_file_path = PATCH_ROOT / lang_type / project / CWE_ID / file_dir / f"add_patch_{filename}"
+    patched_file_path.parent.mkdir(parents=True, exist_ok=True)
+
+    patched_lines = []
+    cursor = 0
+
     for hunk in hunks:
-        hunk_index += 1
-        new_start = hunk.new_start
-        new_len = hunk.old_len + hunk.added_count
-        new_end = new_start + hunk.new_len - 1
-        prev_new_end = hunk.prev_new_end
-        patch_written = False
-        
-        # 패치 적용된 파일 생성
-        patched_file_path = PATCH_ROOT / lang_type / project / CWE_ID / file_dir / f"add_patch_{filename}"
-        patched_file_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(sourcefile_dir, "r") as before, open(patched_file_path, "a") as after:
-            lines = before.readlines()
-            total_lines = len(lines)
-            for i in range(total_lines):
-                if prev_new_end - 1 < i <= new_end - 1:
-                    if i == 0:
-                        after.write(lines[i])
-                        continue
-                    if (new_start - 1 <= i <= new_end - 1):
-                        if patch_written == False:
-                            for hunk_line in hunk.hunk_lines[1:]:
-                                if hunk_line.startswith("+"):
-                                    hunk_line = hunk_line.replace("+", "//fix_flaw_line_below:\n//", 1)
-                                if hunk_line.startswith("-"):
-                                    hunk_line = hunk_line.replace("-", "//flaw_line_below:\n", 1)
-                                if not hunk_line.endswith("\n"):
-                                    hunk_line = hunk_line + "\n"
-                                after.write(hunk_line)
-                            patch_written = True
-                    else:
-                        after.write(lines[i])
-                if hunk_index == total_hunks and new_end < total_lines and i > new_end - 1:
-                    after.write(lines[i])
-    
+        start_idx = max(hunk.new_start - 1, 0)
+        end_idx = max(start_idx + hunk.new_len, start_idx)
+
+        patched_lines.extend(src_lines[cursor:start_idx])
+
+        for hline in hunk.hunk_lines[1:]:
+            if hline.startswith("@@"):
+                continue
+            if hline.startswith("+"):
+                out = hline.replace("+", "//fix_flaw_line_below:\n//", 1)
+            elif hline.startswith("-"):
+                out = hline.replace("-", "//flaw_line_below:\n", 1)
+            else:
+                continue
+            if not out.endswith("\n"):
+                out += "\n"
+            patched_lines.append(out)
+
+        cursor = min(end_idx, len(src_lines))
+
+    patched_lines.extend(src_lines[cursor:])
+
+    with open(patched_file_path, "w") as after:
+        after.writelines(patched_lines)
+
     # 함수 라인 번호 추출 및 취약 함수 판별
     func_starts = list_function_starts(patched_file_path, "c" if lang_type == "c" else "c++")
     if len(func_starts) > 0:
