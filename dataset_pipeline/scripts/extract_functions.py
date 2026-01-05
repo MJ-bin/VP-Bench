@@ -23,6 +23,9 @@ load_dotenv()
 # 환경 변수에서 토큰 읽기
 github_token = os.getenv('GITHUB_TOKEN')
 
+ssl._create_default_https_context = ssl._create_unverified_context
+scraper = cloudscraper.create_scraper()
+
 # Constants
 BASE_DIR = Path(__file__).resolve().parent.parent
 OUTPUT_BASE = BASE_DIR / "output" / "jasper"
@@ -30,26 +33,17 @@ OUTPUT_BASE = BASE_DIR / "output" / "jasper"
 PATCH_ROOT = OUTPUT_BASE / "patches"
 SPLIT_ROOT = OUTPUT_BASE / "extracted_functions"
 DEFAULT_CWE_ID = "others"
+EXT_MAP = {
+    "c": "c",
+    "C": "c++",
+    "cpp": "c++",
+    "cc": "c++",
+    "cxx": "c++",
+    "c++": "c++",
+    "Cpp": "c++",
+}
 
-@dataclass
-class HunkInfo:
-    old_start: int
-    old_len: int
-    new_start: int
-    new_len: int
-    removed_count: int
-    added_count: int
-    removed_offsets: list
-    added_offsets: list
-    hunk_lines: list
-    insert_after: int
-    diff_value: int
-    prev_new_end: int
-
-ssl._create_default_https_context = ssl._create_unverified_context
-scraper = cloudscraper.create_scraper()
-
-def fetch_source_text(url):
+def get_sourcefiles(url):
     try:
         file = scraper.get(url,headers={'User-Agent':'Mozilla/5.0',
                'Authorization': f'token {github_token}',
@@ -59,7 +53,7 @@ def fetch_source_text(url):
     except HTTPError as e:
         if e.code == 429:
             time.sleep(10)
-            return fetch_source_text(url)
+            return get_sourcefiles(url)
         if e.code == 404:
             print("\n not found:" + url+ "！")
             return ""
@@ -75,10 +69,13 @@ def fetch_source_text(url):
         return ""
     
 # find all the line numbers that the functions begins
-def list_function_starts(filename, lang_type):
-    # Normalize path for ctags
-    filename_str = str(filename)
-    cmd = f"ctags -x --{lang_type}-kinds=f {shlex.quote(filename_str)}"
+def get_line_numbers(filename,lang_type):
+    assert(lang_type in ["c","c++"])
+    assert(type(filename) == str)
+    # found = False
+    #cmd = "ctags -x --c-kinds=fp " + filename + " | grep " + funcname
+    cmd = "ctags -x --"+lang_type+"-kinds=f " + filename
+
     output = subprocess.getoutput(cmd)
     lines = output.splitlines()
     line_nums = []
@@ -94,30 +91,31 @@ def list_function_starts(filename, lang_type):
     #     return 0
 
 # given the file name and  line number(start), return the code of the line number and the endline num
-def read_function_block(filename, line_num):
-    filename_str = str(filename)
-    print("opening " + filename_str + " on line " + str(line_num))
+def process_file(filename, line_num):
+    print("opening " + filename + " on line " + str(line_num))
 
     code = ""
-    bracket_depth = 0
-    in_body = False
+    cnt_braket = 0
+    found_start = False
+    found_end = False
 
-    with open(filename_str, "r") as f:
+    with open(filename, "r") as f:
         for i, line in enumerate(f):
             if(i >= (line_num - 1)):
                 code += line
 
                 if (not line.startswith("//")) and line.count("{") > 0:
-                    in_body = True
-                    bracket_depth += line.count("{")
+                    found_start = True
+                    cnt_braket += line.count("{")
 
                 if (not line.startswith("//")) and line.count("}") > 0:
-                    bracket_depth -= line.count("}")
+                    cnt_braket -= line.count("}")
 
-                if bracket_depth == 0 and in_body == True:
+                if cnt_braket == 0 and found_start == True:
+                    found_end = True
                     return code, i+1
 
-def list_hunk_starts(filename):
+def get_diff_num(filename):
     diff_start_lines = []
     with open(filename, "r") as patch:
         for i, line in enumerate(patch):
@@ -127,7 +125,7 @@ def list_hunk_starts(filename):
         diff_start_lines.append(i+1)
     return diff_start_lines
 
-def iter_patch_lines(filename):
+def get_enumerate(filename):
     patch = open(filename, "r")
     return enumerate(patch)
 
@@ -156,302 +154,126 @@ def iter_patch_lines(filename):
  return:
  [[['6835', '12'], ['6835', '16'], 1, 5, [4], [5, 10, 11, 12, 14]]]
 '''
-def parse_range(raw_range):
-    raw = raw_range[1:]
-    if "," in raw:
-        start_str, len_str = raw.split(",", 1)
-        return int(start_str), int(len_str)
-    return int(raw), 1
+def get_diff_information(filename,diff_start_lines):
+    block_num = 0
+    archor = []
+    count = 0
+    for diff_start_line in diff_start_lines:
+        # reset some values
+        count+=1
+        minus_count = 0
+        plus_count = 0
+        before = None
+        after = None
+        start_line_num = None
+        minus_pos = []
+        plus_pos = []
+        patch=[]
+        for j, l in get_enumerate(filename):
+            if count == len (diff_start_lines):
+                if j == diff_start_line - 1:
+                    patch.append(l)
+                    if l.startswith("-"):
+                        minus_count += 1
+                        minus_pos.append(j-start_line_num)
+                    if l.startswith("+"):
+                        plus_count += 1
+                        plus_pos.append(j-start_line_num)
+                    block_num = j
+                    before = list(map(int, before))
+                    after = list(map(int, after))
+                    if len(archor)==0:
+                        archor.append([before, after, minus_count, plus_count, minus_pos, plus_pos, patch,after[0],minus_count,0])
+                    else:
+                        diff_value = archor[-1][8]+ minus_count
+                        insert_after = after[0] + archor[-1][8]
+                        last_end = archor[-1][1][0]+archor[-1][1][1]-1
+                        archor.append([before, after, minus_count,plus_count,minus_pos,plus_pos,patch,insert_after,diff_value,last_end])
+                    break
 
+                if block_num <= j < diff_start_line-1:
+                    patch.append(l)
+                    if l.startswith("@@ "):
+                        start_line_num = j
+                        pos = l.find("@@ ")
+                        end = l.find(" @@ ")
+                        modified = l[pos + 3:end]
+                        modified = modified.split(" ")
+                        before = modified[0]
+                        before = before.replace("-", "")
+                        before = before.split(",")
+                        after = modified[1]
+                        after = after.replace("+", "")
+                        after = after.split(",")
+                        # now our source files are after-modified
 
-def collect_hunks(patch_path):
-    """단순하고 일관된 hunk 파싱: header부터 다음 header 전까지 수집"""
-    hunks = []
-    cumulative_removed = 0
-    prev_new_end = 0
+                    if l.startswith("-"):
+                        minus_count += 1
+                        minus_pos.append(j-start_line_num)
 
-    with open(patch_path, "r") as patch_file:
-        lines = patch_file.readlines()
-
-    idx = 0
-    total = len(lines)
-    while idx < total:
-        line = lines[idx]
-        if not line.startswith("@@ "):
-            idx += 1
-            continue
-
-        header = line
-        section = header[header.find("@@ ") + 3: header.rfind(" @@")].strip()
-        old_raw, new_raw = section.split(" ")
-        old_start, old_len = parse_range(old_raw)
-        new_start, new_len = parse_range(new_raw)
-
-        hunk_lines = [header]
-        removed_offsets, added_offsets = [], []
-        removed_count = 0
-        added_count = 0
-
-        inner_idx = idx + 1
-        while inner_idx < total and not lines[inner_idx].startswith("@@ "):
-            hline = lines[inner_idx]
-            hunk_lines.append(hline)
-            if hline.startswith("-"):
-                removed_count += 1
-                removed_offsets.append(inner_idx - idx)
-            elif hline.startswith("+"):
-                added_count += 1
-                added_offsets.append(inner_idx - idx)
-            inner_idx += 1
-
-        diff_value = cumulative_removed + removed_count
-        last_end = new_start + new_len - 1
-
-        hunks.append(HunkInfo(
-            old_start=old_start,
-            old_len=old_len,
-            new_start=new_start,
-            new_len=new_len,
-            removed_count=removed_count,
-            added_count=added_count,
-            removed_offsets=removed_offsets,
-            added_offsets=added_offsets,
-            hunk_lines=hunk_lines,
-            insert_after=new_start + cumulative_removed,
-            diff_value=diff_value,
-            prev_new_end=prev_new_end
-        ))
-
-        cumulative_removed = diff_value
-        prev_new_end = last_end
-        idx = inner_idx
-
-    return hunks
-
-def parse_changed_files(row):
-    code_link = row["codeLink"]
-    commit_hash = code_link[code_link.rfind("/")+1:]
-    files_changed_raw = row["files_changed"]
-    files_changed = []
-    for i in files_changed_raw.split("<_**next**_>"):
-        files_changed.append(json.loads(i))
-    return files_changed, commit_hash
-
-def get_file_info(changed_file, commit_hash):
-    path_in_repo = changed_file["filename"]
-    path_obj = Path(path_in_repo)
-    
-    filename = path_obj.name
-    dir_path = str(Path(commit_hash) / path_obj.parent) if path_obj.parent else commit_hash
-    
-    raw_url = changed_file["raw_url"]
-    patch = changed_file.get("patch", "")
-    
-    basename = Path(filename).stem
-    ext = Path(filename).suffix[1:] if Path(filename).suffix else "not know"
-    
-    return filename, dir_path, raw_url, patch, basename, ext
-
-def download_src_and_patches(raw_url, patch, ext, project, CWE_ID, dir_path, filename, basename):
-    source_text = fetch_source_text(raw_url)
-    base_dir = PATCH_ROOT / ext / project / CWE_ID / dir_path
-    base_dir.mkdir(parents=True, exist_ok=True)
-    source_file_path = base_dir / filename
-    patch_file_path = base_dir / f"{basename}_patch.txt"
-    with open(source_file_path, "w+") as source_file, open(patch_file_path, "w+") as patch_file:
-        source_file.write(source_text)
-        patch_file.write(patch)
-    return str(source_file_path), str(patch_file_path)
-
-def determine_language(ext):
-    if ext == "c":
-        return "c"
-    elif ext in ["C", "cc", "cxx", "cpp", "c++", "Cpp"]:
-        return "cpp"
-    else:
-        return None
-
-def apply_patches(lang_type, sourcefile_dir, patchfile_dir, filename, file_dir, project, CWE_ID):
-    # 패치 파일 분석: diff 블록 파싱
-    hunks = collect_hunks(patchfile_dir)
-
-    # 원본과 출력 준비
-    with open(sourcefile_dir, "r") as before:
-        src_lines = before.readlines()
-
-    patched_file_path = PATCH_ROOT / lang_type / project / CWE_ID / file_dir / f"add_patch_{filename}"
-    patched_file_path.parent.mkdir(parents=True, exist_ok=True)
-
-    patched_lines = []
-    cursor = 0  # 0-indexed 현재 소스 포인터
-
-    for hunk in hunks:
-        start_idx = max(hunk.new_start - 1, 0)
-        end_idx = max(start_idx + hunk.new_len, start_idx)
-
-        # 패치 앞부분 복사
-        patched_lines.extend(src_lines[cursor:start_idx])
-
-        # hunk 라인 적용 (+/-만 주석화, @@/컨텍스트는 스킵)
-        for hline in hunk.hunk_lines[1:]:
-            if hline.startswith("@@"):
-                continue
-            if hline.startswith("+"):
-                out = hline.replace("+", "//fix_flaw_line_below:\n//", 1)
-            elif hline.startswith("-"):
-                out = hline.replace("-", "//flaw_line_below:\n", 1)
+                    if l.startswith("+"):
+                        plus_count += 1
+                        plus_pos.append(j-start_line_num)
+                elif j<block_num:
+                    continue
+                else:
+                    block_num = j
+                    before = list(map(int, before))
+                    after = list(map(int, after))
+                    if len(archor) == 0:
+                        archor.append(
+                            [before, after, minus_count, plus_count, minus_pos, plus_pos, patch, after[0], minus_count,
+                             0])
+                    else:
+                        diff_value = archor[-1][8] + minus_count
+                        insert_after = after[0] + archor[-1][8]
+                        last_end = archor[-1][1][0] + archor[-1][1][1] - 1
+                        archor.append([before, after, minus_count, plus_count, minus_pos, plus_pos, patch, insert_after,
+                                       diff_value, last_end])
+                    break
             else:
-                continue
-            if not out.endswith("\n"):
-                out += "\n"
-            patched_lines.append(out)
+                if block_num <= j < diff_start_line:
+                    patch.append(l)
+                    if l.startswith("@@ "):
+                        start_line_num = j
+                        pos = l.find("@@ ")
+                        end = l.find(" @@ ")
+                        modified = l[pos + 3:end]
+                        modified = modified.split(" ")
+                        before = modified[0]
+                        before = before.replace("-", "")
+                        before = before.split(",")
+                        after = modified[1]
+                        after = after.replace("+", "")
+                        after = after.split(",")
+                        # now our source files are after-modified
 
-        # 소스 커서를 패치 범위 끝으로 이동 (new_len 기준)
-        cursor = min(end_idx, len(src_lines))
+                    if l.startswith("-"):
+                        minus_count += 1
+                        minus_pos.append(j-start_line_num)
 
-    # 마지막 테일 복사
-    patched_lines.extend(src_lines[cursor:])
+                    if l.startswith("+"):
+                        plus_count += 1
+                        plus_pos.append(j-start_line_num)
+                elif j<block_num:
+                    continue
+                else:
+                    block_num = j
+                    before = list(map(int, before))
+                    after = list(map(int, after))
+                    if len(archor) == 0:
+                        archor.append(
+                            [before, after, minus_count, plus_count, minus_pos, plus_pos, patch, after[0], minus_count,
+                             0])
+                    else:
+                        diff_value = archor[-1][8] + minus_count
+                        insert_after = after[0] + archor[-1][8]
+                        last_end = archor[-1][1][0] + archor[-1][1][1] - 1
+                        archor.append([before, after, minus_count, plus_count, minus_pos, plus_pos, patch, insert_after,
+                                       diff_value, last_end])
+                    break
 
-    # 파일 덮어쓰기
-    with open(patched_file_path, "w") as after:
-        after.writelines(patched_lines)
-
-    return patched_file_path
-
-def extract_functions(patched_file_path, lang_type, filename, project, CWE_ID, vulnerable_functions, vulnerable_count, file_counter):
-    # 함수 라인 번호 추출 및 취약 함수 판별
-    func_starts = list_function_starts(patched_file_path, "c" if lang_type == "c" else "c++")
-    if len(func_starts) > 0:
-        for start_line in func_starts:
-            block_result = read_function_block(patched_file_path, start_line)
-            if block_result is None:
-                continue
-            func_body, end_line = block_result
-            if "//flaw_line_below:" in func_body or "//fix_flaw_line_below:\n//" in func_body:
-                # 취약 함수 발견: 카운트 증가 및 파일 저장
-                vulnerable_count += 1
-                vulnerable_functions.append((func_body, start_line, lang_type, filename))
-                
-                # 취약 함수 저장 (vul 디렉토리)
-                vul_dir = SPLIT_ROOT / "vul" / project / CWE_ID
-                vul_dir.mkdir(parents=True, exist_ok=True)
-                vul_file_path = vul_dir / f"{CWE_ID}_add_patch_{end_line}_{filename}"
-                with open(vul_file_path, "w+") as vul_file:
-                    vul_file.write(func_body)
-                
-                # 취약 함수 저장 (vul0 디렉토리)
-                vul0_dir = SPLIT_ROOT / "vul0" / project
-                vul0_dir.mkdir(parents=True, exist_ok=True)
-                file_name = str(file_counter)
-                vul0_file_path = vul0_dir / f"{file_name}.{lang_type}"
-                with open(vul0_file_path, "w+") as vul0_file:
-                    vul0_file.write(func_body)
-                file_counter += 1
-            else:
-                # 비취약 함수 저장 (nonevul 디렉토리)
-                nonevul_dir = SPLIT_ROOT / "nonevul" / project
-                nonevul_dir.mkdir(parents=True, exist_ok=True)
-                nonevul_file_path = nonevul_dir / f"add_patch_{end_line}_{filename}"
-                with open(nonevul_file_path, "w+") as nonevul_file:
-                    nonevul_file.write(func_body)
-        print("一共有 %d 个" % vulnerable_count)
-    
-    return vulnerable_functions, vulnerable_count, file_counter
-
-def mark_patch_and_extract_funcs(lang_type, sourcefile_dir, patchfile_dir, filename, file_dir, project, CWE_ID, vulnerable_functions, vulnerable_count, file_counter, expanded_rows):
-    # 패치 파일 분석: diff 블록 파싱
-    hunks = collect_hunks(patchfile_dir)
-
-    # 원본과 출력 준비
-    with open(sourcefile_dir, "r") as before:
-        src_lines = before.readlines()
-
-    patched_file_path = PATCH_ROOT / lang_type / project / CWE_ID / file_dir / f"add_patch_{filename}"
-    patched_file_path.parent.mkdir(parents=True, exist_ok=True)
-
-    patched_lines = []
-    cursor = 0
-
-    for hunk in hunks:
-        start_idx = max(hunk.new_start - 1, 0)
-        end_idx = max(start_idx + hunk.new_len, start_idx)
-
-        patched_lines.extend(src_lines[cursor:start_idx])
-
-        for hline in hunk.hunk_lines[1:]:
-            if hline.startswith("@@"):
-                continue
-            if hline.startswith("+"):
-                out = hline.replace("+", "//fix_flaw_line_below:\n//", 1)
-            elif hline.startswith("-"):
-                out = hline.replace("-", "//flaw_line_below:\n", 1)
-            else:
-                continue
-            if not out.endswith("\n"):
-                out += "\n"
-            patched_lines.append(out)
-
-        cursor = min(end_idx, len(src_lines))
-
-    patched_lines.extend(src_lines[cursor:])
-
-    with open(patched_file_path, "w") as after:
-        after.writelines(patched_lines)
-
-    # 함수 라인 번호 추출 및 취약 함수 판별
-    func_starts = list_function_starts(patched_file_path, "c" if lang_type == "c" else "c++")
-    if len(func_starts) > 0:
-        for start_line in func_starts:
-            block_result = read_function_block(patched_file_path, start_line)
-            if block_result is None:
-                continue
-            func_body, end_line = block_result
-            if "//flaw_line_below:" in func_body or "//fix_flaw_line_below:\n//" in func_body:
-                # 취약 함수 발견: 카운트 증가 및 파일 저장
-                vulnerable_count += 1
-                vulnerable_functions.append((func_body, start_line, lang_type, filename))
-                
-                # 취약 함수 저장 (vul 디렉토리)
-                vul_dir = SPLIT_ROOT / "vul" / project / CWE_ID
-                vul_dir.mkdir(parents=True, exist_ok=True)
-                vul_file_path = vul_dir / f"{CWE_ID}_add_patch_{end_line}_{filename}"
-                with open(vul_file_path, "w+") as vul_file:
-                    vul_file.write(func_body)
-                
-                # 취약 함수 저장 (vul0 디렉토리)
-                vul0_dir = SPLIT_ROOT / "vul0" / project
-                vul0_dir.mkdir(parents=True, exist_ok=True)
-                file_name = str(file_counter)
-                vul0_file_path = vul0_dir / f"{file_name}.{lang_type}"
-                with open(vul0_file_path, "w+") as vul0_file:
-                    vul0_file.write(func_body)
-                file_counter += 1
-            else:
-                # 비취약 함수 저장 (nonevul 디렉토리)
-                nonevul_dir = SPLIT_ROOT / "nonevul" / project
-                nonevul_dir.mkdir(parents=True, exist_ok=True)
-                nonevul_file_path = nonevul_dir / f"add_patch_{end_line}_{filename}"
-                with open(nonevul_file_path, "w+") as nonevul_file:
-                    nonevul_file.write(func_body)
-        print("一共有 %d 个" % vulnerable_count)
-    
-    return vulnerable_functions, vulnerable_count, file_counter
-
-def append_funcs(row, vulnerable_functions, file_counter, expanded_rows):
-    # 결과 행 생성: 취약 함수별로 행 확장
-    is_vulnerable = len(vulnerable_functions) > 0
-    if not is_vulnerable:
-        record_copy = row.to_dict()
-        record_copy["vul"] = 0
-        record_copy["vul_func_with_fix"] = ""
-        expanded_rows.append(record_copy)
-    else:
-        for func_body, start_line, lang, file_name in vulnerable_functions:
-            record_copy = row.to_dict()
-            record_copy["vul"] = 1
-            record_copy["vul_func_with_fix"] = func_body
-            expanded_rows.append(record_copy)
-    return expanded_rows
+    return archor
 
 def main():
     parser = argparse.ArgumentParser(description='Process VP-Bench dataset to extract vulnerable functions.')
@@ -459,43 +281,153 @@ def main():
     parser.add_argument('--output_csv', required=True, help='Output CSV file path')
     args = parser.parse_args()
     
-    dataset_df = pd.read_csv(args.input_csv)
-    
-    expanded_records = []
-    vul_count = 0
-    file_id = 1
+    c_cpp_csv = pd.read_csv(args.input_csv)
+    expanded_rows = []
+    vul_number=0
+    file_name_counter = 1
     # ensure columns
-    if "vul" not in dataset_df.columns:
-        dataset_df["vul"] = 0
-    if "vul_func_with_fix" not in dataset_df.columns:
-        dataset_df["vul_func_with_fix"] = ""
+    if "vul" not in c_cpp_csv.columns:
+        c_cpp_csv["vul"] = 0
+    if "vul_func_with_fix" not in c_cpp_csv.columns:
+        c_cpp_csv["vul_func_with_fix"] = ""
 
-    for row_index, record in dataset_df.iterrows():
+    for index, row in c_cpp_csv.iterrows():
         try:
-            cwe_id = DEFAULT_CWE_ID
-            repo_name = record["project"]
-            vulnerable_functions = []
-            commit_hash = record["commit_id"]
-            changed_files = [json.loads(i) for i in record["files_changed"].split("<_**next**_>")]
-            
-            for changed_file in changed_files:
-                filename, dir_path, raw_url, patch, basename, ext = get_file_info(changed_file, commit_hash)
-                source_file_path, patch_file_path = download_src_and_patches(raw_url, patch, ext, repo_name, cwe_id, dir_path, filename, basename)
-                language = determine_language(ext)
-                if language is None:
+            codeLink = row["codeLink"]
+            commit_id = codeLink[codeLink.rfind("/")+1:]
+            diff = row["files_changed"]
+            CWE_ID = "others"
+            files_changed = []
+            project = row["project"]
+            for i in diff.split("<_**next**_>"):
+                files_changed.append(json.loads(i))
+
+            vul_funcs_for_row = set()
+
+            for file in files_changed:
+                file_with_dir = file["filename"]
+                pos = file_with_dir.rfind('/')
+                if pos >0:
+                    filename = file_with_dir[pos+1:]
+                    file_dir = commit_id + "/"+ file_with_dir[:pos]
+                elif pos ==0:
+                    filename = file_with_dir[1:]
+                    file_dir = commit_id
+                else:
+                    filename = file_with_dir
+                    file_dir = commit_id
+                raw_url = file["raw_url"]
+                if "patch" in file:
+                    patch = file["patch"]
+                else:
+                    patch = ""
+                type_pos = filename.find('.')
+                if type_pos>0:
+                    only_name =  filename[:type_pos]
+                    only_type = filename[type_pos+1:]
+                else:
+                    only_name =  filename
+                    only_type = "not know"
+                
+                if only_type not in EXT_MAP.keys():
                     continue
-                patched_file_path = apply_patches(language, source_file_path, patch_file_path, filename, dir_path, repo_name, cwe_id)
-                vulnerable_functions, vul_count, file_id = extract_functions(patched_file_path, language, filename, repo_name, cwe_id, vulnerable_functions, vul_count, file_id)
-            expanded_records = append_funcs(record, vulnerable_functions, file_id, expanded_records)
+                    
+                sourcefiles = get_sourcefiles(raw_url)
+                base_dir = PATCH_ROOT / only_type / project / CWE_ID / file_dir
+                base_dir.mkdir(parents=True, exist_ok=True)
+                sourcefile_dir = base_dir / filename
+                patchfile_dir = base_dir / (only_name + '_patch.txt')
+                with open(sourcefile_dir,"w+") as source_file, open(patchfile_dir,"w+") as patch_file:
+                    source_file.write(sourcefiles)
+                    patch_file.write(patch)
+                num = get_diff_num(patchfile_dir)
+                archors = get_diff_information(patchfile_dir,num)
+                block_num = 0
+                block_total = len(archors)
+                for archor in archors:
+                    block_num+=1
+                    del_line_pos = archor[4]
+                    add_line_pos = archor[5]
+                    patch_start = int(archor[1][0])
+                    patch_lines = int(archor[0][1])+archor[3]
+                    patch_end = patch_start + patch_lines -1
+                    source_end = patch_start + int(archor[1][1])-1
+                    last_end = archor[9]
+                    wrote = False
+                    add_patch_file_dir = base_dir / ("add_patch_" + filename)
+                    with open(sourcefile_dir,"r") as before, open(add_patch_file_dir,"a") as after:
+                        lines = before.readlines()
+                        flen = len(lines)
+                        for i in range(flen):
+                            if last_end-1 < i <= source_end - 1:
+                                if i ==0:
+                                    after.write(lines[i])
+                                    continue
+                                if (patch_start-1<= i <= source_end-1):
+                                    if wrote == False:
+                                        for patch_line in archor[6][1:]:
+                                            if patch_line.startswith("+"):
+                                                patch_line = patch_line.replace("+","//fix_flaw_line_below:\n//",1)
+                                            if patch_line.startswith("-"):
+                                                patch_line = patch_line.replace("-","//flaw_line_below:\n",1)
+                                            if not patch_line.endswith("\n"):
+                                                patch_line = patch_line + "\n"
+                                            after.write(patch_line)
+                                        wrote = True
+                                else:
+                                    after.write(lines[i])
+                            if block_num == block_total and source_end<flen and i > source_end - 1:
+                                after.write(lines[i])
+                line_nums = get_line_numbers(str(add_patch_file_dir), EXT_MAP[only_type])
+                if len(line_nums) > 0:
+                    for line_num in line_nums:
+                        code,i = process_file(str(add_patch_file_dir), line_num)
+                        if "//flaw_line_below:" in code or "//fix_flaw_line_below:\n//" in code:
+                            vul_number+=1
+                            vul_funcs_for_row.add((code, line_num, only_type, filename))
+                            split_vul_dir = SPLIT_ROOT / "vul" / project / CWE_ID
+                            split_vul_dir.mkdir(parents=True, exist_ok=True)
+                            split_vul_file = split_vul_dir / f"{CWE_ID}_add_patch_{str(i)}_{filename}"# +'/' +CWE_ID+"_"+"add_patch_"+str(i)+"_"+filename
+                            with open (split_vul_file,"w+") as vulFun:
+                                vulFun.write(code)
+                            split_vul_dir_0 = SPLIT_ROOT / "vul0" / project
+                            split_vul_dir_0.mkdir(parents=True, exist_ok=True)
+                            # file_name: primary key (int)
+                            file_name = str(file_name_counter)
+                            split_vul_file_0 = split_vul_dir_0 / f"{file_name}.{only_type}"
+                            with open (split_vul_file_0,"w+") as vulFun0:
+                                vulFun0.write(code)
+                            file_name_counter += 1
+                        else:
+                            split_nonevul_dir = SPLIT_ROOT / "nonevul" / project
+                            split_nonevul_dir.mkdir(parents=True, exist_ok=True)
+                            split_nonevul_file = split_nonevul_dir / f"add_patch_{str(i)}_{filename}"
+                            with open (split_nonevul_file,"w+") as nonVulFun:
+                                nonVulFun.write(code)
+                    print("一共有 %d 个" % vul_number)
+            has_vul = len(vul_funcs_for_row) > 0
+            if not has_vul:
+                new_row = row.to_dict()
+                new_row["vul"] = 0
+                new_row["vul_func_with_fix"] = ""
+                new_row["file_name"] = ""
+                expanded_rows.append(new_row)
+            else:
+                for func_code, line_num, only_type, filename in list(vul_funcs_for_row):
+                    new_row = row.to_dict()
+                    new_row["vul"] = 1
+                    new_row["vul_func_with_fix"] = func_code
+                    new_row["file_name"] = str(file_name_counter - len(list(vul_funcs_for_row)) + list(vul_funcs_for_row).index((func_code, line_num, only_type, filename)))
+                    expanded_rows.append(new_row)
         except Exception as e:
             traceback.print_exc(file=sys.stdout)
             print("reason", e)
-            print("\n index:"+str(row_index)+ "！")
+            print("\n commit_id:"+str(commit_id)+ "！")
+            print("\n index:"+str(index)+ "！")
             continue
 
     # expand rows: one record per vulnerable function (or single non-vul record)
-    dataset_df = pd.DataFrame(expanded_records)
-
+    dataset_df = pd.DataFrame(expanded_rows)
     dataset_df.to_csv(args.output_csv, index=False)
 
 if __name__ == "__main__":
