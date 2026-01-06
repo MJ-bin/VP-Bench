@@ -67,20 +67,6 @@ RUN curl -L "https://github.com/MJ-bin/PDBERT/releases/download/v0.1.0/PDBERT_da
     7z x dataset_without_src.7z -o/PDBERT/data/datasets/extrinsic/vul_detect/realvul -y && \
     rm -f dataset_without_src.7z
 
-# Config 파일생성: pdbert_realvul.jsonnet, pdbert_realvul_test.jsonnet (경로 수정 포함)
-RUN cp /PDBERT/downstream/configs/vul_detect/pdbert_reveal.jsonnet \
-   /PDBERT/downstream/configs/vul_detect/pdbert_realvul.jsonnet && \
-   sed -i "s|../data/datasets/extrinsic/vul_detect/reveal/|/PDBERT/data/datasets/extrinsic/vul_detect/realvul/|g" \
-   /PDBERT/downstream/configs/vul_detect/pdbert_realvul.jsonnet && \
-   cp /PDBERT/downstream/configs/vul_detect/pdbert_reveal.jsonnet \
-   /PDBERT/downstream/configs/vul_detect/pdbert_realvul_test.jsonnet && \
-   sed -i "s|../data/datasets/extrinsic/vul_detect/reveal/|/PDBERT/data/datasets/extrinsic/vul_detect/realvul_test/|g" \
-   /PDBERT/downstream/configs/vul_detect/pdbert_realvul_test.jsonnet
-
-# prepare_dataset.py 복사 및 RealVul 데이터셋 변환
-COPY prepare_dataset.py /PDBERT/prepare_dataset.py
-RUN python /PDBERT/prepare_dataset.py --train Real_Vul
-
 # CodeBERT 모델 다운로드 (네트워크 문제 방지)
 RUN git lfs install && \
     git clone https://huggingface.co/microsoft/codebert-base pretrain/microsoft/codebert-base && \
