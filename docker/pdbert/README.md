@@ -27,13 +27,13 @@ docker exec pdbert python /PDBERT/prepare_dataset.py --test {project_name}
 
 ## 3. 모델 학습(realvul)
 ```bash
-docker exec pdbert bash -c "cd /PDBERT/downstream && python train_eval_from_config.py -config configs/vul_detect/pdbert_realvul.jsonnet -task_name vul_detect/realvul -average binary --train-only"
+docker exec pdbert bash -c "cd /PDBERT/downstream && python train_eval_from_config.py -config configs/vul_detect/pdbert_realvul.jsonnet -task_name vul_detect/realvul -model_task_name vul_detect/realvul -average binary --train-only"
 ```
 > 참고: 모델이 학습하는 데이터셋 경로는 `/PDBERT/downstream/vul_detect/realvul` 입니다.
 
 ## 4. 모델 평가(realvul_test)
 ```bash
-docker exec pdbert bash -c "cd /PDBERT/downstream && python train_eval_from_config.py -config configs/vul_detect/pdbert_realvul_test.jsonnet -task_name vul_detect/realvul_test -average binary --test-only"
+docker exec pdbert bash -c "cd /PDBERT/downstream && python train_eval_from_config.py -config configs/vul_detect/pdbert_realvul_test.jsonnet -task_name vul_detect/realvul_test -model_task_name vul_detect/realvul -average binary --test-only"
 ```
 > 참고: 모델이 평가하는 데이터셋 경로는 `/PDBERT/downstream/vul_detect/realvul_test` 입니다.
 
