@@ -26,7 +26,7 @@ for project_name in tqdm(projects, total=len(projects)):
     combined_functions = []  # Reset per project
     project_folder = BASE_DIR / "output" / project_name
     functions_folder = project_folder / "all_functions"
-    slurm_tmp = Path(os.environ.get("SLURM_TMPDIR", BASE_DIR / "output" / project_name / "source_snapshots"))
+    slurm_tmp = Path(os.environ.get("SLURM_TMPDIR", BASE_DIR / "output" / project_name / "source_code"))
     SLURM_source_code_path = slurm_tmp / project_name
     SLURM_source_code_path.mkdir(parents=True, exist_ok=True)
 
@@ -47,7 +47,7 @@ for project_name in tqdm(projects, total=len(projects)):
 
     for _, row in csv_data[csv_data["vulnerable_line_numbers"].str.len() > 0].iterrows():
         vul_file = row["file_name"]
-        with open(join(SLURM_source_code_path, vul_file), "r", encoding="ISO-8859-1") as f:
+        with open(join(SLURM_source_code_path, 'source_code', vul_file), "r", encoding="ISO-8859-1") as f:
             source_code = "".join(f.readlines())
             combined_functions.append({"file_name": row["file_name"], "vulnerable_line_numbers": row["vulnerable_line_numbers"], "dataset_type": row["dataset_type"], "commit_hash": row["commit_hash"], "project": project_name, "target": 1})
         vul_hash = getMD5("".join(source_code.split()))
@@ -55,7 +55,7 @@ for project_name in tqdm(projects, total=len(projects)):
     for _, row in csv_data[csv_data["vulnerable_line_numbers"].str.len() == 0].iterrows():
         file = row["file_name"]
         if file in all_functions:
-            with open(join(SLURM_source_code_path, file), "r", encoding="ISO-8859-1") as f:
+            with open(join(SLURM_source_code_path, 'source_code', file), "r", encoding="ISO-8859-1") as f:
                 source_code = f.readlines()
             for function in all_functions[file]:
                 non_vul_hash = getMD5("".join("".join(source_code[function["start"] - 1:function["end"]]).split()))

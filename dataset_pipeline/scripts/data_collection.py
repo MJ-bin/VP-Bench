@@ -28,7 +28,6 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 OUTPUT_BASE = BASE_DIR / "output" / "jasper"
 # Keep git repos and source snapshots inside the project output
 REPOSITORIES_DIR = os.environ.get("SLURM_TMPDIR", str(OUTPUT_BASE / "repository"))
-SOURCE_SNAPSHOTS_DIR = str(OUTPUT_BASE / "source_snapshots")
 
 def get_project_folder(project):
     """프로젝트 폴더 경로 반환 (Chrome 예외 처리)"""
@@ -92,7 +91,7 @@ def process_project(project, bigvul_data, args):
     main_branch = list(gr.get_head().branches)[0]
     
     # Prepare output folder (프로젝트별 분리)
-    output_folder = SOURCE_SNAPSHOTS_DIR
+    output_folder = str(OUTPUT_BASE / "source_code")
     if not exists(output_folder):
         os.makedirs(output_folder)
     global TOTAL_FILE_COUNT
@@ -126,8 +125,8 @@ def process_project(project, bigvul_data, args):
     final_dataframe.to_csv(args.output_csv, index=False)
     script_dir = os.path.dirname(os.path.abspath(__file__))
     tar_path = BASE_DIR / "output" / "jasper" / f"{project}_source_code.tar.gz"
-    os.chdir(output_folder)
-    os.system(f"tar -cf {tar_path} .")
+    os.chdir(OUTPUT_BASE)
+    os.system(f"tar -cf {tar_path} ./source_code")
     print(f"{project} ended")
 
 
