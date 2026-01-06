@@ -33,7 +33,7 @@ WORKDIR /app
 RUN git clone https://github.com/seokjeon/vuddy.git
 
 # Change to hmark directory for default operation
-WORKDIR /app/vuddy/hmark
+WORKDIR /app/vuddy
 
 # Default command - show help message
 CMD ["/bin/bash", "-c", "echo 'VUDDY Container Ready' && echo 'Run: python3 hmark.py --help for usage' && /bin/bash"]

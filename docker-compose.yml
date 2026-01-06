@@ -5,7 +5,7 @@ services:
       dockerfile: Dockerfile
     image: vuddy:0.1.0
     container_name: vuddy
-    working_dir: /app/vuddy/hmark
+    working_dir: /app/vuddy
     tty: true
     stdin_open: true
     environment:
