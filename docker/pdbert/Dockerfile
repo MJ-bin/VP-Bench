@@ -20,7 +20,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     p7zip-full \
     build-essential \
     g++ \
-    p7zip-full \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -59,7 +58,7 @@ RUN curl -L "https://github.com/MJ-bin/PDBERT/releases/download/v0.1.0/PDBERT_da
     7z x PDBERT_data.zip && \
     mv PDBERT_data/data ./data && \
     rm -rf PDBERT_data PDBERT_data.zip && \
-    # RealVul dataset 다운로드
+    # RealVul_dataset 다운로드
     mkdir -p /PDBERT/data/datasets/extrinsic/vul_detect/realvul && \
     curl -L "https://github.com/seokjeon/VP-Bench/releases/download/RealVul_Dataset/all_source_code.tar.xz" -o all_source_code.tar.xz && \
     tar -xvf all_source_code.tar.xz -C /PDBERT/data/datasets/extrinsic/vul_detect/realvul && \
@@ -68,58 +67,19 @@ RUN curl -L "https://github.com/MJ-bin/PDBERT/releases/download/v0.1.0/PDBERT_da
     7z x dataset_without_src.7z -o/PDBERT/data/datasets/extrinsic/vul_detect/realvul -y && \
     rm -f dataset_without_src.7z
 
-# Config 파일생성: pdbert_realvul.jsonnet (경로 수정 포함)
+# Config 파일생성: pdbert_realvul.jsonnet, pdbert_realvul_test.jsonnet (경로 수정 포함)
 RUN cp /PDBERT/downstream/configs/vul_detect/pdbert_reveal.jsonnet \
    /PDBERT/downstream/configs/vul_detect/pdbert_realvul.jsonnet && \
    sed -i "s|../data/datasets/extrinsic/vul_detect/reveal/|/PDBERT/data/datasets/extrinsic/vul_detect/realvul/|g" \
-   /PDBERT/downstream/configs/vul_detect/pdbert_realvul.jsonnet
+   /PDBERT/downstream/configs/vul_detect/pdbert_realvul.jsonnet && \
+   cp /PDBERT/downstream/configs/vul_detect/pdbert_reveal.jsonnet \
+   /PDBERT/downstream/configs/vul_detect/pdbert_realvul_test.jsonnet && \
+   sed -i "s|../data/datasets/extrinsic/vul_detect/reveal/|/PDBERT/data/datasets/extrinsic/vul_detect/realvul_test/|g" \
+   /PDBERT/downstream/configs/vul_detect/pdbert_realvul_test.jsonnet
 
-# RealVul 데이터셋 변환 스크립트 생성
-RUN cat > /PDBERT/data/datasets/extrinsic/vul_detect/realvul/make_dataset_for_pdbert.py << 'EOF'
-#!/usr/bin/env python3
-import csv
-import json
-from pathlib import Path
-import random
-
-BASE_DIR = Path("/PDBERT/data/datasets/extrinsic/vul_detect/realvul")
-CSV_PATH = BASE_DIR / "Real_Vul_data.csv"
-SOURCE_DIR = BASE_DIR / "all_source_code"
-OUTPUT_DIR = BASE_DIR
-
-random.seed(42)
-train_val_data = []
-test_data = []
-
-with open(CSV_PATH, 'r') as f:
-    reader = csv.DictReader(f)
-    for row in reader:
-        source_file = SOURCE_DIR / f"{row['file_name']}.c"
-        if not source_file.exists():
-            continue
-        with open(source_file, 'r', errors='ignore') as sf:
-            code = sf.read()
-        item = {"code": code, "vul": int(row['target'])}
-        if row['dataset_type'] == "train_val":
-            train_val_data.append(item)
-        else:
-            test_data.append(item)
-
-random.shuffle(train_val_data)
-split_idx = int(len(train_val_data) * 0.8)
-
-with open(OUTPUT_DIR / "train.json", 'w') as f:
-    json.dump(train_val_data[:split_idx], f, indent=4)
-with open(OUTPUT_DIR / "validate.json", 'w') as f:
-    json.dump(train_val_data[split_idx:], f, indent=4)
-with open(OUTPUT_DIR / "test.json", 'w') as f:
-    json.dump(test_data, f, indent=4)
-
-print(f"Train: {split_idx}, Validate: {len(train_val_data)-split_idx}, Test: {len(test_data)}")
-EOF
-
-# 데이터셋 변환 스크립트 실행
-RUN python /PDBERT/data/datasets/extrinsic/vul_detect/realvul/make_dataset_for_pdbert.py
+# prepare_dataset.py 복사 및 RealVul 데이터셋 변환
+COPY prepare_dataset.py /PDBERT/prepare_dataset.py
+RUN python /PDBERT/prepare_dataset.py --train Real_Vul
 
 # CodeBERT 모델 다운로드 (네트워크 문제 방지)
 RUN git lfs install && \
