@@ -1,5 +1,5 @@
 # PyTorch 1.9.0과 관련 패키지들을 위한 Dockerfile (GPU 지원)
-FROM nvidia/cuda:11.1.1-cudnn8-devel-ubuntu20.04
+FROM nvidia/cuda:11.8.0-cudnn8-devel-ubuntu20.04
 SHELL ["/bin/bash", "-l", "-c"]
 ENV DEBIAN_FRONTEND=noninteractive
 ENV TZ=Etc/UTC
@@ -24,33 +24,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends --fix-missing \
     p7zip-full unzip zip graphviz graphviz-dev pkg-config pigz\
     && rm -rf /var/lib/apt/lists/*
 
-RUN git clone https://github.com/seokjeon/RealVul /tmp/RealVul \
-    && mkdir -p /code/models/ \
-    && mv /tmp/RealVul/Experiments/DeepWukong /code/models/DeepWukong
-
-RUN wget https://github.com/seokjeon/VP-Bench/releases/download/v0.1.0/Data.7z -P /code/models/DeepWukong/data/ \
-    && 7z x /code/models/DeepWukong/data/Data.7z -o/code/models/DeepWukong/data/ \ 
-    && rm /code/models/DeepWukong/data/Data.7z
-ADD https://github.com/seokjeon/VP-Bench/releases/download/v0.1.0/DeepWukong /code/models/DeepWukong/data/DeepWukong
-
-# Python 3.8을 기본으로 설정
-RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.8 1
-RUN update-alternatives --install /usr/bin/pip pip /usr/bin/pip3 1
-
-# Python 환경 변수 설정
-ENV PYTHONUNBUFFERED=1
-ENV PYTHONDONTWRITEBYTECODE=1
-
 # pip 업그레이드 및 패키지 설치
-RUN pip install --no-cache-dir --upgrade pip
+RUN pip install --upgrade pip
 
 # PyTorch 관련 패키지들을 먼저 설치 (GPU 버전, 의존성 순서 고려)
-RUN pip install --no-cache-dir torch==2.0.1+cu118 torchvision==0.15.2+cu118 torchaudio==2.0.2 --extra-index-url https://download.pytorch.org/whl/cu118
-RUN pip install --no-cache-dir torch-geometric==2.3.1
-# torch-scatter와 torch-sparse 설치 (torch-geometric 의존성)
-RUN pip install --no-cache-dir torch-scatter torch-sparse -f https://data.pyg.org/whl/torch-2.0.1+cu118.html
-# 나머지 패키지들 설치
-RUN pip install --no-cache-dir ray[default] \
+RUN pip install --extra-index-url https://download.pytorch.org/whl/cu118 torch==2.0.1+cu118 torchvision==0.15.2+cu118 torchaudio==2.0.2
+
+RUN pip install torch-geometric==2.3.1
+
+RUN pip install -f https://data.pyg.org/whl/torch-2.0.1+cu118.html torch-scatter torch-sparse
+
+RUN pip install ray[default] \
     black==21.6b0 \
     mypy==0.910 \
     pytest==6.2.4 \
@@ -65,7 +49,13 @@ RUN pip install --no-cache-dir ray[default] \
     tqdm==4.67.1 \
     omegaconf==2.2.0 \
     jupyter \
-    setuptools==59.5.0 clang gdown libclang mpmath nltk openpyxl safetensors sympy transformers pygraphviz tensorboardX tensorboard opencensus
+    setuptools==59.5.0 \
+    clang gdown libclang mpmath nltk openpyxl safetensors sympy \
+    transformers pygraphviz tensorboardX tensorboard opencensus
+
+RUN git clone https://github.com/seokjeon/RealVul /tmp/RealVul \
+    && mkdir -p /code/models/ \
+    && mv /tmp/RealVul/Experiments/DeepWukong /code/models/DeepWukong
 
 WORKDIR /tmp
 
