@@ -17,10 +17,8 @@
 `docker compose exec {프로젝트 명} bash`
 
 ## 빌드 성공여부 검증
-* linevul : 
-`sudo apt update && sudo apt install -y bats && bats ./docker/linevul/test_image.bats`
-* pdbert : 
-`sudo apt update && sudo apt install -y bats && bats ./docker/pdbert/test_image.bats`
+`bats ./docker/{프로젝트 명}/test_container.bats`
+* bats 설치 명령어: `sudo apt update && sudo apt install -y bats`
 
 ## 2. 비교할 데이터 셋 준비
 ### 사전 준비 사항
