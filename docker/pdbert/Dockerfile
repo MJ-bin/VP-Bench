@@ -49,28 +49,11 @@ RUN pip install --no-cache-dir \
     allennlp==2.8.0 \
     allennlp_models==2.8.0
 
-# PDBERT 클론 및 데이터 설정
+# PDBERT 클론
 WORKDIR /
 RUN git clone https://github.com/MJ-bin/PDBERT.git
 
 WORKDIR /PDBERT
-RUN curl -L "https://github.com/MJ-bin/PDBERT/releases/download/v0.1.0/PDBERT_data.zip" -o PDBERT_data.zip && \
-    7z x PDBERT_data.zip && \
-    mv PDBERT_data/data ./data && \
-    rm -rf PDBERT_data PDBERT_data.zip && \
-    # RealVul_dataset 다운로드
-    mkdir -p /PDBERT/data/datasets/extrinsic/vul_detect/realvul && \
-    curl -L "https://github.com/seokjeon/VP-Bench/releases/download/RealVul_Dataset/all_source_code.tar.xz" -o all_source_code.tar.xz && \
-    tar -xvf all_source_code.tar.xz -C /PDBERT/data/datasets/extrinsic/vul_detect/realvul && \
-    rm -rf all_source_code.tar.xz && \
-    curl -L "https://github.com/seokjeon/VP-Bench/releases/download/RealVul_Dataset/dataset_without_src.7z" -o dataset_without_src.7z && \
-    7z x dataset_without_src.7z -o/PDBERT/data/datasets/extrinsic/vul_detect/realvul -y && \
-    rm -f dataset_without_src.7z
-
-# CodeBERT 모델 다운로드 (네트워크 문제 방지)
-RUN git lfs install && \
-    git clone https://huggingface.co/microsoft/codebert-base pretrain/microsoft/codebert-base && \
-    git clone https://huggingface.co/microsoft/codebert-base downstream/microsoft/codebert-base
 
 # global_vars.json 동적 생성을 위한 엔트리포인트 설정
 RUN echo '#!/bin/bash\n\
