@@ -14,6 +14,7 @@ setup_file() {
     run docker exec deepwukong bash -c "if [ ! -f /code/models/DeepWukong/data/DeepWukong ]; then wget https://github.com/seokjeon/VP-Bench/releases/download/v0.1.0/DeepWukong -P /code/models/DeepWukong/data/; fi"
     run docker exec deepwukong test -f /code/models/DeepWukong/data/DeepWukong
 
+    run docker exec deepwukong sed -i "s|\"/data/dataset/.*\.csv\"|\"/data/dataset/RealVul_data.csv\"|g" config/config.yaml
     # 종료 코드 0 (성공) 확인
     [ "$status" -eq 0 ]
 
@@ -21,7 +22,7 @@ setup_file() {
 }
 
 @test "2. deepwukong 실행 가능성 점검" {
-    run docker exec -w /code/models/DeepWukong -e PYTORCH_JIT=0 -e SLURM_TMPDIR=. deepwukong python3 evaluate.py ./data/DeepWukong --root_folder_path ./data --split_folder_name CWE119
+    run docker exec -w /code/models/DeepWukong -e PYTORCH_JIT=0 -e SLURM_TMPDIR=. deepwukong python evaluate.py ./data/DeepWukong --root_folder_path ./data --split_folder_name CWE119
     # 종료 코드 0 (성공) 확인
     [ "$status" -eq 0 ]
     

@@ -24,6 +24,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends --fix-missing \
     p7zip-full unzip zip graphviz graphviz-dev pkg-config pigz\
     && rm -rf /var/lib/apt/lists/*
 
+# Python 3.8을 기본으로 설정
+RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.8 1 && update-alternatives --install /usr/bin/pip pip /usr/bin/pip3 1
+
 # pip 업그레이드 및 패키지 설치
 RUN pip install --upgrade pip
 
