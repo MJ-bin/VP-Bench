@@ -10,35 +10,47 @@ setup_file() {
 
 # === 1~2: PDBERT_data (pdbert-base 모델 포함) ===
 
-@test "1. PDBERT_data 다운로드" {
+@test "1. PDBERT_data.zip 다운로드" {
     run docker exec pdbert bash -c '
         cd /PDBERT
+        
+        # 이미 설치후 압축해제까지 완료된 경우
         if [ -d "/PDBERT/data/models/pdbert-base" ]; then
             echo "[SKIP] pdbert-base already exists"
             exit 0
         fi
+        
+        # 이미 다운로드된 경우
         if [ -f "PDBERT_data.zip" ]; then
             echo "[SKIP] PDBERT_data.zip already downloaded"
             exit 0
         fi
+        
+        # 다운로드 실행
         echo "[INFO] Downloading PDBERT_data.zip (약 1.1GB)..."
         curl -L --progress-bar "https://github.com/MJ-bin/PDBERT/releases/download/v0.1.0/PDBERT_data.zip" -o PDBERT_data.zip
+        
+        # 다운로드 결과 확인
+        if [ -f /PDBERT/PDBERT_data.zip ]; then
+            echo "[OK] PDBERT_data.zip download complete"
+        else
+            echo "[ERROR] PDBERT_data.zip not found after download!"
+            exit 1
+        fi
     '
-    echo "$output" >&3
+    echo "# $output" >&3
     [ "$status" -eq 0 ]
 }
 
 @test "2. PDBERT_data 압축해제 및 설치" {
     run docker exec pdbert bash -c '
         cd /PDBERT
+
         if [ -d "/PDBERT/data/models/pdbert-base" ]; then
             echo "[SKIP] pdbert-base already exists"
             exit 0
         fi
-        if [ ! -f "PDBERT_data.zip" ]; then
-            echo "[ERROR] PDBERT_data.zip not found"
-            exit 1
-        fi
+
         echo "[INFO] Extracting PDBERT_data.zip..."
         7z x PDBERT_data.zip -y
         mkdir -p ./data
@@ -46,10 +58,7 @@ setup_file() {
         rm -rf PDBERT_data PDBERT_data.zip
         echo "[INFO] PDBERT_data installation complete"
     '
-    echo "$output" >&3
-    [ "$status" -eq 0 ]
-    
-    run docker exec pdbert test -d /PDBERT/data/models/pdbert-base
+    echo "# $output" >&3
     [ "$status" -eq 0 ]
 }
 
@@ -58,77 +67,81 @@ setup_file() {
 @test "3. RealVul 소스코드 다운로드" {
     run docker exec pdbert bash -c '
         cd /PDBERT
+
         if [ -d "/PDBERT/data/datasets/extrinsic/vul_detect/realvul/all_source_code" ]; then
             echo "[SKIP] RealVul source already exists"
             exit 0
         fi
+
         mkdir -p /PDBERT/data/datasets/extrinsic/vul_detect/realvul
         echo "[INFO] Downloading all_source_code.tar.xz..."
         curl -L --progress-bar "https://github.com/seokjeon/VP-Bench/releases/download/RealVul_Dataset/all_source_code.tar.xz" -o all_source_code.tar.xz
         echo "[INFO] Download complete"
     '
-    echo "$output" >&3
+    echo "# $output" >&3
     [ "$status" -eq 0 ]
 }
 
 @test "4. RealVul 소스코드 압축해제" {
     run docker exec pdbert bash -c '
         cd /PDBERT
+
         if [ -d "/PDBERT/data/datasets/extrinsic/vul_detect/realvul/all_source_code" ]; then
             echo "[SKIP] RealVul source already extracted"
             exit 0
         fi
+
         if [ ! -f "all_source_code.tar.xz" ]; then
             echo "[ERROR] all_source_code.tar.xz not found"
             exit 1
         fi
+
         echo "[INFO] Extracting all_source_code.tar.xz..."
         tar -xvf all_source_code.tar.xz -C /PDBERT/data/datasets/extrinsic/vul_detect/realvul
         rm -f all_source_code.tar.xz
         echo "[INFO] Extraction complete"
     '
-    echo "$output" >&3
-    [ "$status" -eq 0 ]
-    
-    run docker exec pdbert test -d /PDBERT/data/datasets/extrinsic/vul_detect/realvul/all_source_code
+    echo "# $output" >&3
     [ "$status" -eq 0 ]
 }
 
 @test "5. RealVul CSV 다운로드" {
     run docker exec pdbert bash -c '
         cd /PDBERT
+
         if [ -f "/PDBERT/data/datasets/extrinsic/vul_detect/realvul/Real_Vul_data.csv" ]; then
             echo "[SKIP] RealVul CSV already exists"
             exit 0
         fi
+
         echo "[INFO] Downloading dataset_without_src.7z..."
         curl -L --progress-bar "https://github.com/seokjeon/VP-Bench/releases/download/RealVul_Dataset/dataset_without_src.7z" -o dataset_without_src.7z
-        echo "[INFO] Download complete"
+        echo "[INFO] RealVul CSV Download complete"
     '
-    echo "$output" >&3
+    echo "# $output" >&3
     [ "$status" -eq 0 ]
 }
 
 @test "6. RealVul CSV 압축해제" {
     run docker exec pdbert bash -c '
         cd /PDBERT
+
         if [ -f "/PDBERT/data/datasets/extrinsic/vul_detect/realvul/Real_Vul_data.csv" ]; then
             echo "[SKIP] RealVul CSV already extracted"
             exit 0
         fi
+
         if [ ! -f "dataset_without_src.7z" ]; then
             echo "[ERROR] dataset_without_src.7z not found"
             exit 1
         fi
+
         echo "[INFO] Extracting dataset_without_src.7z..."
         7z x dataset_without_src.7z -o/PDBERT/data/datasets/extrinsic/vul_detect/realvul -y
         rm -f dataset_without_src.7z
-        echo "[INFO] Extraction complete"
+        echo "[INFO] RealVul CSV Extraction complete"
     '
-    echo "$output" >&3
-    [ "$status" -eq 0 ]
-    
-    run docker exec pdbert test -f /PDBERT/data/datasets/extrinsic/vul_detect/realvul/Real_Vul_data.csv
+    echo "# $output" >&3
     [ "$status" -eq 0 ]
 }
 
@@ -137,38 +150,36 @@ setup_file() {
 @test "7. CodeBERT pretrain 다운로드" {
     run docker exec pdbert bash -c '
         cd /PDBERT
+
         if [ -d "/PDBERT/pretrain/microsoft/codebert-base" ]; then
             echo "[SKIP] CodeBERT pretrain already exists"
             exit 0
         fi
+
         echo "[INFO] Downloading CodeBERT pretrain..."
         git lfs install
         git clone https://huggingface.co/microsoft/codebert-base pretrain/microsoft/codebert-base
-        echo "[INFO] Download complete"
+        echo "[INFO] CodeBERT pretrain Download complete"
     '
-    echo "$output" >&3
-    [ "$status" -eq 0 ]
-    
-    run docker exec pdbert test -d /PDBERT/pretrain/microsoft/codebert-base
+    echo "# $output" >&3
     [ "$status" -eq 0 ]
 }
 
 @test "8. CodeBERT downstream 다운로드" {
     run docker exec pdbert bash -c '
         cd /PDBERT
+
         if [ -d "/PDBERT/downstream/microsoft/codebert-base" ]; then
             echo "[SKIP] CodeBERT downstream already exists"
             exit 0
         fi
+
         echo "[INFO] Downloading CodeBERT downstream..."
         git lfs install
         git clone https://huggingface.co/microsoft/codebert-base downstream/microsoft/codebert-base
-        echo "[INFO] Download complete"
+        echo "[INFO] CodeBERT downstream Download complete"
     '
-    echo "$output" >&3
-    [ "$status" -eq 0 ]
-    
-    run docker exec pdbert test -d /PDBERT/downstream/microsoft/codebert-base
+    echo "# $output" >&3
     [ "$status" -eq 0 ]
 }
 
@@ -191,7 +202,7 @@ setup_file() {
         rm -rf "$DST_DIR"
         mkdir -p "$DST_DIR"
         
-        echo "[INFO] Creating test_bats dataset from bigvul..."
+        echo "[INFO] Creating sample dataset from bigvul for test_bats"
         
         python3 << EOF
 import json
@@ -227,18 +238,17 @@ for filename in ["train.json", "validate.json", "test.json"]:
 print("[INFO] Done!")
 EOF
         
-        echo "[INFO] test_bats dataset created successfully"
+        echo "[INFO] sample dataset created successfully"
     '
-    
-    echo "# test_bats dataset creation output:" >&3
-    echo "$output" >&3
+
+    echo "# $output" >&3
     
     if [ "$status" -ne 0 ]; then
         echo "[ERROR] Dataset creation failed with status $status" >&3
     fi
     
     [ "$status" -eq 0 ]
-    [[ "$output" == *"test_bats dataset created successfully"* ]]
+    [[ "$output" == *"sample dataset created successfully"* ]]
     
     run docker exec pdbert test -f /PDBERT/data/datasets/extrinsic/vul_detect/test_bats/train.json
     [ "$status" -eq 0 ]
@@ -269,9 +279,8 @@ EOF
         echo "[INFO] Created config: $DST_CONFIG"
         head -n 5 "$DST_CONFIG"
     '
-    
-    echo "# jsonnet config creation output:" >&3
-    echo "$output" >&3
+
+    echo "# $output" >&3
     
     [ "$status" -eq 0 ]
     [[ "$output" == *"Created config:"* ]]
@@ -286,15 +295,23 @@ EOF
 
 @test "11. PDBERT 학습 및 평가 (test_bats 데이터셋)" {
     run docker exec pdbert bash -c "cd /PDBERT/downstream && python train_eval_from_config.py -config configs/vul_detect/pdbert_test_bats.jsonnet -task_name vul_detect/test_bats -model_path vul_detect/test_bats -average binary"
-    echo "# PDBERT training output (test_bats):" >&3
-    echo "$output" >&3
     
+    # 실행 실패 시 에러 출력
     if [ "$status" -ne 0 ]; then
-        echo "[ERROR] Training failed with status $status" >&3
+        echo "# [ERROR] Training failed with status $status" >&3
+        echo "# $output" >&3
     fi
-    
     [ "$status" -eq 0 ]
     
+    # 핵심 결과만 출력
+    echo "# === PDBERT Training & Evaluation Results ===" >&3
+    echo "# [Training]" >&3
+    echo "$output" | grep "best_validation_f1" | head -1 | sed 's/^/# /' >&3
+    echo "$output" | grep "training_duration" | head -1 | sed 's/^/# /' >&3
+    echo "# [Evaluation]" >&3
+    echo "$output" | grep "{'Accuracy'" | head -1 | sed 's/^/# /' >&3
+    
+    # 모든 키워드가 있어야 성공
     [[ "$output" == *"best_validation_f1"* ]]
     [[ "$output" == *"training_duration"* ]]
     [[ "$output" == *"Start to test File"* ]]
