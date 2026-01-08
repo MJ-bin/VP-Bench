@@ -85,8 +85,11 @@ omegaconf==2.3.0
 captum==0.7.0
 EOF
 
-# 5. Set directory
+# 5. clone RealVul repository
 WORKDIR /app
+RUN git clone https://github.com/seokjeon/RealVul.git && \
+    cd RealVul && \
+    git submodule update --init --recursive
 
 # 6. Default command - show welcome message with usage hints
 CMD ["/bin/bash", "-c", "echo 'LineVul Container Ready' && echo 'Run: cd /app/RealVul/LineVul/linevul && /bin/bash"]
