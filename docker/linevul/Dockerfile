@@ -85,41 +85,11 @@ omegaconf==2.3.0
 captum==0.7.0
 EOF
 
-
-# 5. Set directory, file
+# 5. clone RealVul repository
 WORKDIR /app
 RUN git clone https://github.com/seokjeon/RealVul.git && \
     cd RealVul && \
-    git submodule update --init --recursive && \
-    #gdown "https://drive.google.com/uc?id=1h0iFJbc5DGXCXXvvR6dru_Dms_b2zW4V" -O ./LineVul/data/big-vul_dataset/test.csv && \
-    #gdown "https://drive.google.com/uc?id=1ldXyFvHG41VMrm260cK_JEPYqeb6e6Yw" -O ./LineVul/data/big-vul_dataset/train.csv && \
-    #gdown "https://drive.google.com/uc?id=1yggncqivMcP0tzbh8-8Eu02Edwcs44WZ" -O ./LineVul/data/big-vul_dataset/val.csv && \
-    gdown --fuzzy "https://drive.google.com/uc?id=1oodyQqRb9jEcvLMVVKILmu8qHyNwd-zH" -O /app/RealVul/LineVul/linevul/saved_models/checkpoint-best-f1/12heads_linevul_model.bin && \
-    wget https://github.com/seokjeon/VP-Bench/releases/download/v0.1.0/big-vul_dataset.7z -P /app/RealVul/LineVul/data/big-vul_dataset/ && \
-    7z x /app/RealVul/LineVul/data/big-vul_dataset/big-vul_dataset.7z -o/app/RealVul/LineVul/data/big-vul_dataset/
+    git submodule update --init --recursive
 
-# 추후 RealVul 데이터셋 활용을 위해 준비
-RUN mkdir -p /app/RealVul/Experiments/LineVul/best_model && \
-    cp /app/RealVul/LineVul/linevul/saved_models/checkpoint-best-f1/12heads_linevul_model.bin /app/RealVul/Experiments/LineVul/best_model/ && \
-    cp /app/RealVul/Experiments/LineVul/best_model/12heads_linevul_model.bin /app/RealVul/Experiments/LineVul/best_model/pytorch_model.bin && \
-    wget https://github.com/seokjeon/VP-Bench/releases/download/RealVul_Dataset/dataset_without_src.7z -P /app/RealVul/Dataset/ && \
-    wget https://github.com/seokjeon/VP-Bench/releases/download/RealVul_Dataset/all_source_code.tar.xz -P /app/RealVul/Dataset/ && \
-    7z x /app/RealVul/Dataset/dataset_without_src.7z -o/app/RealVul/Dataset/ && \
-    tar -xvf /app/RealVul/Dataset/all_source_code.tar.xz -C /app/RealVul/Dataset/
-
-# HuggingFace 에서 기본 설정 config.json 로드
-RUN python - <<'PY'
-from transformers import RobertaConfig
-config = RobertaConfig.from_pretrained("microsoft/codebert-base")
-config.num_labels = 2              # Line-level classification
-config.save_pretrained("/app/RealVul/Experiments/LineVul/best_model")
-PY
-
-# 6. Build verification - 필수 파일 존재 확인
-RUN test -f /app/RealVul/LineVul/linevul/saved_models/checkpoint-best-f1/12heads_linevul_model.bin && \
-    test -f /app/RealVul/LineVul/data/big-vul_dataset/train.csv && \
-    test -f /app/RealVul/LineVul/data/big-vul_dataset/test.csv && \
-    echo "✅ LineVul build verification passed"
-
-# 7. Default command - show welcome message with usage hints
+# 6. Default command - show welcome message with usage hints
 CMD ["/bin/bash", "-c", "echo 'LineVul Container Ready' && echo 'Run: cd /app/RealVul/LineVul/linevul && /bin/bash"]
