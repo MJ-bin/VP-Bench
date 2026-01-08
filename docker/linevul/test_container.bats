@@ -5,7 +5,7 @@ setup_file() {
 }
 
 # ------------------------------------------
-# 1~7 테스트: 환경 설정 및 데이터/모델 다운로드
+# 1~5 테스트: 환경 설정 및 데이터/모델 다운로드
 # ------------------------------------------
 
 # bats test_tags=timeout:600
@@ -58,52 +58,7 @@ setup_file() {
 }
 
 # bats test_tags=timeout:1800
-@test "3 big-vul 데이터셋 다운로드" {
-    run docker exec linevul bash -c '
-        ARCHIVE_PATH="/app/RealVul/LineVul/data/big-vul_dataset/big-vul_dataset.7z"
-        
-        # 이미 다운로드된 경우 스킵
-        if [ -f "$ARCHIVE_PATH" ]; then
-            echo "[SKIP] big-vul_dataset.7z 파일이 이미 존재합니다."
-            exit 0
-        fi
-        
-        echo "[INFO] big-vul 데이터셋 다운로드 시작..."
-        mkdir -p /app/RealVul/LineVul/data/big-vul_dataset/
-        wget https://github.com/seokjeon/VP-Bench/releases/download/v0.1.0/big-vul_dataset.7z -P /app/RealVul/LineVul/data/big-vul_dataset/
-    '
-    [ "$status" -eq 0 ]
-    
-    # test 3 최종 확인 - 데이터셋 또는 압축 해제된 파일 존재 확인
-    run docker exec linevul bash -c '
-        test -f /app/RealVul/LineVul/data/big-vul_dataset/big-vul_dataset.7z
-    '
-    [ "$status" -eq 0 ]
-}
-
-# bats test_tags=timeout:1800
-@test "4 big-vul 데이터셋 압축 해제" {
-    run docker exec linevul bash -c '
-        ARCHIVE_PATH="/app/RealVul/LineVul/data/big-vul_dataset/big-vul_dataset.7z"
-        
-        # 이미 압축 해제된 경우에도 이전 실험에서의 데이터셋과 겹칠수 있으므로, 압축해제하여 덮어씁니다.
-        
-        echo "[INFO] big-vul 데이터셋 압축 해제 중..."
-        7z x "$ARCHIVE_PATH" -y -o/app/RealVul/LineVul/data/big-vul_dataset/
-    '
-    [ "$status" -eq 0 ]
-    
-    # test 4 최종 확인 - 압축 해제된 데이터셋 파일 존재 확인
-    run docker exec linevul bash -c '
-        test -f /app/RealVul/LineVul/data/big-vul_dataset/train.csv && \
-        test -f /app/RealVul/LineVul/data/big-vul_dataset/test.csv && \
-        test -f /app/RealVul/LineVul/data/big-vul_dataset/val.csv
-    '
-    [ "$status" -eq 0 ]
-}
-
-# bats test_tags=timeout:1800
-@test "5 RealVul 데이터셋 다운로드" {
+@test "3. RealVul 데이터셋 다운로드" {
     run docker exec linevul bash -c '
         ARCHIVE_1="/app/RealVul/Dataset/dataset_without_src.7z"
         ARCHIVE_2="/app/RealVul/Dataset/all_source_code.tar.xz"
@@ -121,7 +76,7 @@ setup_file() {
     '
     [ "$status" -eq 0 ]
     
-    # test 5 최종 확인 - 다운로드된 데이터셋 파일 존재 확인
+    # test 3 최종 확인 - 다운로드된 데이터셋 파일 존재 확인
     run docker exec linevul bash -c '
         test -f /app/RealVul/Dataset/dataset_without_src.7z && \
         test -f /app/RealVul/Dataset/all_source_code.tar.xz
@@ -130,7 +85,7 @@ setup_file() {
 }
 
 # bats test_tags=timeout:1800
-@test "6 RealVul 데이터셋 압축 해제" {
+@test "4. RealVul 데이터셋 압축 해제" {
     run docker exec linevul bash -c '
         ARCHIVE_1="/app/RealVul/Dataset/dataset_without_src.7z"
         ARCHIVE_2="/app/RealVul/Dataset/all_source_code.tar.xz"
@@ -143,7 +98,7 @@ setup_file() {
     '
     [ "$status" -eq 0 ]
     
-    # test 6 최종 확인 - 압축 해제된 파일 존재 확인
+    # test 4 최종 확인 - 압축 해제된 파일 존재 확인
     run docker exec linevul bash -c '
         test -f /app/RealVul/Dataset/Real_Vul_data.csv && \
         test -d /app/RealVul/Dataset/all_source_code
@@ -152,7 +107,7 @@ setup_file() {
 }
 
 # bats test_tags=timeout:1200
-@test "7 모델 파일 및 config.json 생성" {
+@test "5. 모델 파일 및 config.json 생성" {
     run docker exec linevul bash -c '
         MODEL_PATH="/app/RealVul/Experiments/LineVul/best_model/12heads_linevul_model.bin"
         PYTORCH_MODEL_PATH="/app/RealVul/Experiments/LineVul/best_model/pytorch_model.bin"
@@ -187,7 +142,7 @@ PY
     '
     [ "$status" -eq 0 ]
     
-    # test 7 최종 확인 - 모델 파일 및 config.json 존재 확인
+    # test 5 최종 확인 - 모델 파일 및 config.json 존재 확인
     run docker exec linevul bash -c '
         test -f /app/RealVul/Experiments/LineVul/best_model/config.json && \
         test -f /app/RealVul/Experiments/LineVul/best_model/pytorch_model.bin && \
@@ -197,11 +152,11 @@ PY
 }
 
 # ---------------------------------------------
-# 8~11 테스트: Jasper 데이터셋 전처리 및 학습/테스트
+# 6~9 테스트: Jasper 데이터셋 전처리 및 학습/테스트
 # ---------------------------------------------
 
 # bats test_tags=timeout:600
-@test "8. 불완전한 jasper 데이터셋에 processed_func 열 추가" {
+@test "6. 불완전한 jasper 데이터셋에 processed_func 열 추가" {
     run docker exec linevul bash -c '
         python /app/RealVul/Experiments/LineVul/append_datasetjasper.py
     '
@@ -213,7 +168,7 @@ PY
     [[ "$output" == *"Source merged"* ]]
     [[ "$output" == *"Output:"* ]]
     
-    # test 8 최종 확인 - 소스코드가 추가된 데이터셋 존재 확인
+    # test 6 최종 확인 - 소스코드가 추가된 데이터셋 존재 확인
     run docker exec linevul bash -c '
         test -f /app/RealVul/Dataset/jasper_data_append_processed_func.csv
    '
@@ -221,7 +176,7 @@ PY
 }
 
 # bats test_tags=timeout:1200
-@test "9. Jasper 데이터셋의 pickle 생성 (--prepare_dataset)" {
+@test "7. Jasper 데이터셋의 pickle 생성 (--prepare_dataset)" {
     run docker exec linevul bash -c '
         python /app/RealVul/Experiments/LineVul/line_vul.py \
         --dataset_csv_path /app/RealVul/Dataset/jasper_data_append_processed_func.csv \
@@ -236,7 +191,7 @@ PY
     '
     [ "$status" -eq 0 ]
     
-    # test 9 최종 확인 - pickle 파일 존재 확인
+    # test 7 최종 확인 - pickle 파일 존재 확인
     run docker exec linevul bash -c '
         test -f /app/RealVul/Dataset/train_dataset.pickle && \
         test -f /app/RealVul/Dataset/val_dataset.pickle && \
@@ -246,7 +201,7 @@ PY
 }
 
 # bats test_tags=timeout:1800
-@test "10. Jasper 데이터셋으로 학습 (--train)" {
+@test "8. Jasper 데이터셋으로 학습 (--train)" {
     run docker exec linevul bash -c '
         python /app/RealVul/Experiments/LineVul/line_vul.py \
         --dataset_csv_path /app/RealVul/Dataset/jasper_data_append_processed_func.csv \
@@ -261,7 +216,7 @@ PY
     '
     [ "$status" -eq 0 ]
     
-    # test 10 최종 확인 - 학습과정 중 출력에서 필수 패턴 매칭 (학습 시작, 완료, 모델 저장)
+    # test 8 최종 확인 - 학습과정 중 출력에서 필수 패턴 매칭 (학습 시작, 완료, 모델 저장)
     [[ "$output" == *"Running training"* ]]
     [[ "$output" == *"Training completed"* ]]
     [[ "$output" == *"Saving model checkpoint"* ]]
@@ -269,7 +224,7 @@ PY
 }
 
 # bats test_tags=timeout:1800
-@test "11. Jasper 데이터셋으로 테스트 (--test_predict)" {
+@test "9. Jasper 데이터셋으로 테스트 (--test_predict)" {
     run docker exec linevul bash -c '
         python /app/RealVul/Experiments/LineVul/line_vul.py \
         --dataset_csv_path /app/RealVul/Dataset/jasper_data_append_processed_func.csv \
@@ -284,7 +239,7 @@ PY
     '
     [ "$status" -eq 0 ]
 
-    # test 11 최종 확인 - 테스트과정 중 출력에서 필수 패턴 매칭 (테스트 실행 및 결과)
+    # test 9 최종 확인 - 테스트과정 중 출력에서 필수 패턴 매칭 (테스트 실행 및 결과)
     [[ "$output" == *"Test Results"* ]]
     [[ "$output" == *"Running Prediction"* ]]
     [[ "$output" == *"Test Metrics"* ]]
