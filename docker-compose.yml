@@ -14,6 +14,8 @@ services:
     command: ["/bin/bash", "-lc", "echo 'VUDDY Container Ready' && bash"]
     volumes: # TODO: In production, include via Dockerfile COPY (no volume mount)
       - ./baseline/vuddy:/app/vuddy:rw
+      - ./downloads/vuddy/VP-Bench_Test_Dataset:/app/vuddy/input/VP-Bench_Test_Dataset:ro
+      - ./downloads/vuddy/RealVul_Dataset:/app/vuddy/input/RealVul_Dataset:ro
 
   deepwukong:
     build:
@@ -35,7 +37,7 @@ services:
     command: ["/bin/bash", "-lc", "echo 'DeepWukong Container Ready' && bash"]
     volumes: # TODO: In production, include via Dockerfile COPY (no volume mount)
       - ./baseline/RealVul/Experiments/DeepWukong:/code/models/DeepWukong:rw
-      - ./downloads/DeepWukong/data/CWE119:/code/models/DeepWukong/data/CWE119:ro
+      - ./downloads/DeepWukong/data/CWE119:/code/models/DeepWukong/data/CWE119:rw
       - ./downloads/RealVul/datasets:/data/dataset:ro
 
   linevul:
