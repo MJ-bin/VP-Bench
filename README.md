@@ -35,10 +35,7 @@ Docker 빌드, 빌드 검증, 실험을 순차적으로 실행
 
 `bash ./experiment/run.sh -m {실험할 모델}`
 
-### 현재 실험 가능한 모델 목록
-- vuddy
-- deepwukong
-- linevul
-- pdbert
-- all * 전체 모델 실행 시
+사용 가능한 모델: `vuddy`, `deepwukong`, `linevul`, `pdbert`
+- 전체 모델 지정 시, `all`
+- 복수 모델 지정 시, `vuddy,deepwukong,linevul` (콤마로 구분, 띄어쓰기 없음)
 
