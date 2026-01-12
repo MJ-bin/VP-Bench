@@ -38,9 +38,15 @@ pip install -r requirements.txt
 Docker 빌드, 빌드 검증, 실험을 순차적으로 실행
 * 로그는 logs/experiment에 기록
 
-`bash ./experiment/run.sh -m {실험할 모델}`
+`bash ./experiment/run.sh -m {실험할 모델} [옵션]`
 
-사용 가능한 모델: `vuddy`, `deepwukong`, `linevul`, `pdbert`
-- 전체 모델 지정 시, `all`
-- 복수 모델 지정 시, `vuddy,deepwukong,linevul` (콤마로 구분, 띄어쓰기 없음)
+### 필수 옵션
+- `-m, --models {모델명}`: 실험할 모델 지정 (필수)
+  - 전체 모델 지정 시: `all`
+  - 복수 모델 지정 시: `vuddy,deepwukong,linevul` (콤마로 구분, 띄어쓰기 없음)
+  - 사용 가능한 모델: `vuddy`, `deepwukong`, `linevul`, `pdbert`
+
+### 선택 옵션
+- `--no-cache`: Docker 이미지 빌드 시 캐시를 사용하지 않음 (재빌드 시 유용)
+- `--skip-tests, --no-bats`: 빌드 검증 단계(bats) 스킵
 
