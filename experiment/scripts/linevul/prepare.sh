@@ -3,7 +3,6 @@
 set -euo pipefail
 
 DOWNLOADS_DIR="downloads"
-LOCK_FILE="datasets.lock.json"
 
 echo "=== LineVul 데이터 준비 스크립트 ==="
 
@@ -122,59 +121,9 @@ test -d "$DOWNLOADS_DIR/RealVul/datasets/test/source_code" || { echo "Error: VP-
 
 echo "✅ 모든 파일 검증 완료!"
 
-# datasets.lock.json 생성 (모든 데이터 준비 및 검증 후 마지막에 생성)
-echo ""
-echo "[9/9] datasets.lock.json 생성..."
-
-cat > "$LOCK_FILE" <<EOF
-{
-  "version": "1.0.0",
-  "generated": "$(date -Iseconds)",
-  "datasets": {
-    "RealVul": {
-      "dataset_without_src.7z": {
-        "url": "https://github.com/seokjeon/VP-Bench/releases/download/RealVul_Dataset/dataset_without_src.7z",
-        "sha256": "$(sha256sum $DOWNLOADS_DIR/RealVul/datasets/dataset_without_src.7z | cut -d' ' -f1)",
-        "extracted": ["Real_Vul_data.csv"]
-      },
-      "all_source_code.tar.xz": {
-        "url": "https://github.com/seokjeon/VP-Bench/releases/download/RealVul_Dataset/all_source_code.tar.xz",
-        "sha256": "$(sha256sum $DOWNLOADS_DIR/RealVul/datasets/all_source_code.tar.xz | cut -d' ' -f1)",
-        "extracted": ["all_source_code"]
-      },
-      "jasper_dataset.csv": {
-        "url": "https://github.com/seokjeon/VP-Bench/releases/download/VP-Bench_Test_Dataset/jasper_dataset.csv",
-        "sha256": "$(sha256sum $DOWNLOADS_DIR/RealVul/datasets/jasper_dataset.csv | cut -d' ' -f1)"
-      },
-      "jasper_source_code.tar.gz": {
-        "url": "https://github.com/seokjeon/VP-Bench/releases/download/VP-Bench_Test_Dataset/jasper_source_code.tar.gz",
-        "sha256": "$(sha256sum $DOWNLOADS_DIR/RealVul/datasets/jasper_source_code.tar.gz | cut -d' ' -f1)",
-        "extracted": ["source_code"]
-      }
-    },
-    "LineVul": {
-      "12heads_linevul_model.bin": {
-        "url": "https://drive.google.com/uc?id=1oodyQqRb9jEcvLMVVKILmu8qHyNwd-zH",
-        "sha256": "$(sha256sum $DOWNLOADS_DIR/LineVul/models/checkpoint-best-f1/12heads_linevul_model.bin | cut -d' ' -f1)",
-        "type": "model"
-      }
-    },
-    "VP-Bench": {
-      "test/jasper_dataset.csv": {
-        "url": "https://github.com/seokjeon/VP-Bench/releases/download/VP-Bench_Test_Dataset/jasper_dataset.csv",
-        "sha256": "$(sha256sum $DOWNLOADS_DIR/RealVul/datasets/test/jasper_dataset.csv | cut -d' ' -f1)"
-      },
-      "test/jasper_source_code.tar.gz": {
-        "url": "https://github.com/seokjeon/VP-Bench/releases/download/VP-Bench_Test_Dataset/jasper_source_code.tar.gz",
-        "sha256": "$(sha256sum $DOWNLOADS_DIR/RealVul/datasets/test/jasper_source_code.tar.gz | cut -d' ' -f1)",
-        "extracted": ["test/source_code"]
-      }
-    }
-  }
-}
-EOF
-
-echo "✅ datasets.lock.json 생성 완료!"
+# TODO: datasets.lock.json 생성 기능 추가 예정
+# - 다운로드한 모든 파일의 메타데이터(URL, SHA256) 기록
+# - 데이터 무결성 검증 및 버전 관리용
 
 echo ""
 echo "=========================================="
