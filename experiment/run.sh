@@ -6,12 +6,13 @@ SELECTED_MODELS=()
 SUCCESSFUL_MODELS=()
 
 # 로그 디렉토리 및 파일 설정
-LOG_DIR="logs"
-LOG_FILE="$LOG_DIR/run.log"
+LOG_DIR="logs/experiment"
 mkdir -p "$LOG_DIR"
+LOG_FILE="$LOG_DIR/$(date +"%Y%m%d_%H%M%S")_experiment.log"
 
 # 모든 출력을 로그 파일과 화면에 동시에 출력
 exec > >(tee -a "$LOG_FILE") 2>&1
+echo "[$(date)] Command: $0 $@"
 
 while [[ $# -gt 0 ]]; do
     case $1 in
