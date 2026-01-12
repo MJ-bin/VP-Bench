@@ -7,6 +7,7 @@
 
 ## 1. 환경 설정
 ```bash
+git submodule update --init --recursive
 sudo apt update && sudo apt install -y bats universal-ctags jq
 pip install -r requirements.txt
 ```
@@ -19,7 +20,7 @@ pip install -r requirements.txt
 - pdbert
 
 ### 실행 환경 구축 방법
-`git submodule update --init --recursive && docker compose up -d --build {프로젝트 명}`
+`docker compose up -d --build {프로젝트 명}`
 
 ### 셸 접속
 `docker compose exec {프로젝트 명} bash`
