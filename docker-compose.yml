@@ -12,6 +12,8 @@ services:
       - PYTHONUNBUFFERED=1
     # Allow entering a bash shell and running commands directly if needed
     command: ["/bin/bash", "-lc", "echo 'VUDDY Container Ready' && bash"]
+    volumes: # TODO: In production, include via Dockerfile COPY (no volume mount)
+      - ./baseline/vuddy:/app/vuddy:rw
 
   deepwukong:
     build:
@@ -31,6 +33,8 @@ services:
     stdin_open: true
     # Allow entering a bash shell and running commands directly if needed
     command: ["/bin/bash", "-lc", "echo 'DeepWukong Container Ready' && bash"]
+    volumes: # TODO: In production, include via Dockerfile COPY (no volume mount)
+      - ./baseline/RealVul/Experiments/DeepWukong:/code/models/DeepWukong:rw
 
   linevul:
     build:
@@ -50,6 +54,8 @@ services:
               capabilities: [gpu]
     # Allow entering a bash shell and running commands directly if needed
     command: ["/bin/bash", "-lc", "echo 'LineVul Container Ready' && bash"]
+    volumes: # TODO: In production, include via Dockerfile COPY (no volume mount)
+      - ./baseline/RealVul/LineVul:/app:rw
 
   pdbert:
     build:
@@ -69,3 +75,5 @@ services:
               capabilities: [gpu]
     # Allow entering a bash shell and running commands directly if needed
     command: ["/bin/bash", "-lc", "echo 'PDBERT Container Ready' && bash"]
+    volumes: # TODO: In production, include via Dockerfile COPY (no volume mount)
+      - ./baseline/PDBERT:/PDBERT:rw

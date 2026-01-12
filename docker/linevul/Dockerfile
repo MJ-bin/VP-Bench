@@ -85,11 +85,8 @@ omegaconf==2.3.0
 captum==0.7.0
 EOF
 
-# 5. clone RealVul repository
+# 5. 소스 코드는 런타임에 볼륨으로 마운트됨 (docker-compose.yml 참조)
 WORKDIR /app
-RUN git clone https://github.com/seokjeon/RealVul.git && \
-    cd RealVul && \
-    git submodule update --init --recursive
 
 # 6. Default command - show welcome message with usage hints
 CMD ["/bin/bash", "-c", "echo 'LineVul Container Ready' && echo 'Run: cd /app/RealVul/LineVul/linevul && /bin/bash"]
