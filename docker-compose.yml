@@ -35,6 +35,8 @@ services:
     command: ["/bin/bash", "-lc", "echo 'DeepWukong Container Ready' && bash"]
     volumes: # TODO: In production, include via Dockerfile COPY (no volume mount)
       - ./baseline/RealVul/Experiments/DeepWukong:/code/models/DeepWukong:rw
+      - ./downloads/DeepWukong/data/CWE119:/code/models/DeepWukong/data/CWE119:ro
+      - ./downloads/RealVul/datasets:/data/dataset:ro
 
   linevul:
     build:
@@ -54,8 +56,14 @@ services:
               capabilities: [gpu]
     # Allow entering a bash shell and running commands directly if needed
     command: ["/bin/bash", "-lc", "echo 'LineVul Container Ready' && bash"]
-    volumes: # TODO: In production, include via Dockerfile COPY (no volume mount)
-      - ./baseline/RealVul/LineVul:/app:rw
+    volumes:
+      # 코드 (개발용 rw)
+      - ./baseline/RealVul/LineVul:/app/RealVul/LineVul:rw
+      # Experiments (실험 결과 저장 rw)
+      - ./baseline/RealVul/Experiments/LineVul:/app/RealVul/Experiments/LineVul:rw
+      # 데이터 (읽기 전용 ro)
+      - ./downloads/RealVul/datasets:/app/RealVul/Dataset:rw
+      - ./downloads/LineVul/models:/app/RealVul/LineVul/linevul/saved_models:rw
 
   pdbert:
     build:
