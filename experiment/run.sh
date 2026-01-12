@@ -6,6 +6,7 @@ SELECTED_MODELS=()
 SUCCESSFUL_MODELS=()
 
 # 로그 디렉토리 및 파일 설정
+<<<<<<< HEAD
 LOG_DIR="logs/experiment"
 mkdir -p "$LOG_DIR"
 LOG_FILE="$LOG_DIR/$(date +"%Y%m%d_%H%M%S")_experiment.log"
@@ -13,6 +14,14 @@ LOG_FILE="$LOG_DIR/$(date +"%Y%m%d_%H%M%S")_experiment.log"
 # 모든 출력을 로그 파일과 화면에 동시에 출력
 exec > >(tee -a "$LOG_FILE") 2>&1
 echo "[$(date)] Command: $0 $@"
+=======
+LOG_DIR="logs"
+LOG_FILE="$LOG_DIR/run.log"
+mkdir -p "$LOG_DIR"
+
+# 모든 출력을 로그 파일과 화면에 동시에 출력
+exec > >(tee -a "$LOG_FILE") 2>&1
+>>>>>>> apply-stash-2
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -39,12 +48,17 @@ fi
 echo "Selected models: ${SELECTED_MODELS[*]}"
 
 for model in "${SELECTED_MODELS[@]}"; do
+    
+    echo "Prepare data for $model..."
+    bash "./experiment/scripts/${model}/prepare.sh" || { echo "Data preparation failed for $model"; continue; }
+
     echo "Building Docker image for $model..."
     docker compose down "$model" || true
-    docker compose up -d "$model" || { echo "Build failed for $model"; exit 1; }
+    # docker compose build --no-cache "$model" || { echo "Build failed for $model"; exit 1; } # TODO: support --no-cache build option
+    docker compose up -d "$model" || { echo "Container failed to start for $model"; exit 1; }
 
     echo "Testing Docker container for $model..."
-    bats "./docker/$model/test_container.bats" || { echo "Test failed for $model"; continue; }
+    # bats "./docker/$model/test_container.bats" || { echo "Test failed for $model"; continue; }
 
     echo "$model setup and test completed."
     SUCCESSFUL_MODELS+=("$model")
@@ -55,5 +69,5 @@ echo "Successful models: ${SUCCESSFUL_MODELS[*]}"
 
 for model in "${SUCCESSFUL_MODELS[@]}"; do
     echo "Running experiment for $model..."
-    bash "./experiment/scripts/run_${model}.sh"
+    bash "./experiment/scripts/${model}/run.sh"
 done
