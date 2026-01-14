@@ -82,7 +82,7 @@ if [ -f "$STEP55_OUT" ]; then
 else
     mkdir -p "$DATASET_DIR/output/jasper/all_functions"
     cd "$SCRIPT_DIR"
-    python3 scripts/generate_all_functions.py --project jasper --lang c
+    python3 scripts/generate_all_functions.py --project jasper
     echo "Step 5.5 완료: $STEP55_OUT 생성 여부를 확인하세요."
 fi
 

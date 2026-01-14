@@ -38,8 +38,6 @@ for project_name in tqdm(projects, total=len(projects)):
     csv_data = pd.read_csv(project_folder / f"{project_name}_dataset.csv")
     csv_data["vulnerable_line_numbers"] = csv_data["vulnerable_line_numbers"].fillna("").astype(str)
     csv_data["file_name"] = csv_data["file_name"].astype(str)  # file_name = unique_id
-    csv_data["commit_hash"] = csv_data["commit_hash"]
-    csv_data["dataset_type"] = csv_data["dataset_type"]  # Default value
     
     with open(functions_folder / f"{project_name}_new_all_functions.pickle", "rb") as output_file:
         all_functions = pickle.load(output_file)

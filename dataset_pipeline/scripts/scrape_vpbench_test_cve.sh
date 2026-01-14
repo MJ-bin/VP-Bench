@@ -33,4 +33,4 @@ TARGET=${1:-all}
     merge_all_projects "${TARGET_LIST[@]}"
     cleanup_empty_projects "${TARGET_LIST[@]}"
     echo "✨ 완료!"
-} | tee "$LOG_FILE"
+}
