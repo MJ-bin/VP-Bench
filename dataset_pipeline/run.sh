@@ -9,7 +9,7 @@ set -a
 BASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ARCHIVE_DIR="$BASE_DIR/archive"
 INPUT_DIR="$BASE_DIR/input"
-OUTPUT_DIR="$BASE_DIR/output"
+OUTPUT_BASE="$BASE_DIR/output"
 SCRIPT_DIR="$BASE_DIR/scripts"
 PROJECT_ROOT="$(cd "$BASE_DIR/.." && pwd)"
 set +a
@@ -18,11 +18,13 @@ LOG_DIR="$PROJECT_ROOT/logs/dataset_pipeline"
 PROJECTS=("FFmpeg" "ImageMagick" "jasper" "krb5" "openssl" "php-src" "qemu" "tcpdump" "linux" "Chrome")
 SELECTED_PROJECTS=("jasper")  # 기본값
 ORIG_ARGS=("$@")
+MODE="vpbench"
 
 usage() {
     echo "Usage: $0 [--projects <target_project>]"
     echo "  --projects: 처리할 프로젝트 (기본값: jasper)"
     echo "              'all'을 지정하면 모든 프로젝트 처리"
+    echo "  --mode: 출력 루트 모드 (vpbench|realvul, 기본값: vpbench)"
 }
 
 # 스텝 실행 함수
@@ -56,6 +58,12 @@ while [[ $# -gt 0 ]]; do
             fi
             shift 2
             ;;
+        --mode)
+            if [ -n "$2" ]; then
+                MODE="$2"
+            fi
+            shift 2
+            ;;
         -h|--help)
             usage
             exit 0
@@ -67,6 +75,8 @@ while [[ $# -gt 0 ]]; do
             ;;
     esac
 done
+
+export OUTPUT_DIR="$OUTPUT_BASE/$MODE"
 
 # 각 프로젝트마다 반복 처리
 for PROJECT in "${SELECTED_PROJECTS[@]}"; do
@@ -84,7 +94,7 @@ for PROJECT in "${SELECTED_PROJECTS[@]}"; do
 
     # Step 3: vulnerable function 확장
     STEP3_OUT="$OUTPUT_DIR/$PROJECT/VP-Bench_${PROJECT}_files_changed_with_vulfunc.csv"
-    run_step 3 "$STEP3_OUT" "extract_functions.py" --input "$STEP2_OUT" --output "$STEP3_OUT" --project "$PROJECT"
+    run_step 3 "$STEP3_OUT" "extract_functions.py" --input "$STEP2_OUT" --output "$STEP3_OUT" --project "$PROJECT" --output-dir "$OUTPUT_DIR"
 
     # Step 4: flaw_line_index, processed_func 컬럼 추가
     STEP4_OUT="$OUTPUT_DIR/$PROJECT/VP-Bench_${PROJECT}_files_changed_with_targets.csv"
@@ -92,7 +102,7 @@ for PROJECT in "${SELECTED_PROJECTS[@]}"; do
 
     # Step 5: RealVul 형식 변환 (project_dataset.csv 생성)
     STEP5_OUT="$OUTPUT_DIR/$PROJECT/${PROJECT}_dataset.csv"
-    run_step 5 "$STEP5_OUT" "data_collection.py" --input "$STEP4_OUT" --output "$STEP5_OUT" --project "$PROJECT"
+    run_step 5 "$STEP5_OUT" "data_collection.py" --input "$STEP4_OUT" --output "$STEP5_OUT" --project "$PROJECT" --output-dir "$OUTPUT_DIR"
 
     # Step 6: all_functions pickle 생성
     STEP6_OUT="$OUTPUT_DIR/$PROJECT/all_functions/${PROJECT}_new_all_functions.pkl"
@@ -102,4 +112,4 @@ done
 
 # Step 7: data_filtration.py 실행
 STEP7_OUT="$OUTPUT_DIR/real_vul_functions_dataset.csv"
-run_step 7 "$STEP7_OUT" "data_filtration.py" --projects "${SELECTED_PROJECTS[@]}"
+run_step 7 "$STEP7_OUT" "data_filtration.py" --output-dir "$OUTPUT_DIR" --projects "${SELECTED_PROJECTS[@]}"

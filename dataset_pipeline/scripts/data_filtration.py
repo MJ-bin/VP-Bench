@@ -19,11 +19,12 @@ def getMD5(s):
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--projects', help='Comma-separated list of projects')
+parser.add_argument('--output-dir', help='Output directory')
 args = parser.parse_args()
 projects = args.projects.split(',')
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-OUTPUT_DIR = BASE_DIR / "output"
+OUTPUT_DIR = Path(args.output_dir)
 
 for project_name in tqdm(projects, total=len(projects)):
     combined_functions = []  # Reset per project

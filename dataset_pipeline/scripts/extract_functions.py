@@ -277,10 +277,11 @@ def main():
     parser = argparse.ArgumentParser(description='Process VP-Bench dataset to extract vulnerable functions.')
     parser.add_argument('--input', required=True, help='Input CSV file path')
     parser.add_argument('--output', required=True, help='Output CSV file path')
+    parser.add_argument('--output-dir', help='Output directory for project processing')
     parser.add_argument('--project', required=True, help='Project name')
     args = parser.parse_args()
     
-    OUTPUT_BASE = BASE_DIR / "output" / args.project
+    OUTPUT_BASE = Path(args.output_dir) / args.project
     # Store patch/split artifacts under the project output directory
     PATCH_ROOT = OUTPUT_BASE / "patches"
     SPLIT_ROOT = OUTPUT_BASE / "extracted_functions"

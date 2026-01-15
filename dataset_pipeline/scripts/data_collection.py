@@ -31,7 +31,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 def process_project(project, bigvul_data, args):
     """프로젝트별 데이터 처리"""
     print(f"{project} started!")
-    PROJECT_DIR = BASE_DIR / "output" / project
+    PROJECT_DIR = Path(args.output_dir) / project
     # Keep git repos and source snapshots inside the project output
     REPOSITORIES_DIR = str(PROJECT_DIR / "repository")
 
@@ -131,6 +131,7 @@ def main():
     parser.add_argument('--input')
     parser.add_argument('--output')
     parser.add_argument('--project')
+    parser.add_argument('--output-dir', help='Output directory for project processing')
     args = parser.parse_args()
     bigvul_data = pd.read_csv(args.input)
     process_project(args.project, bigvul_data, args)
