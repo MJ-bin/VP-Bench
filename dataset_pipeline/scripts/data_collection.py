@@ -27,6 +27,24 @@ PROJECT_GIT_URLS = {
 }
 FILE_EXTENSIONS = {".c", ".cpp", ".cxx", ".cc", ".h"}
 BASE_DIR = Path(__file__).resolve().parent.parent
+LABELS_DEFAULT = ['train_val', 'test']
+
+def generate_neg_files(files, dataset_type, commit_hash, output_folder):
+    global TOTAL_FILE_COUNT
+    data = []
+    for old_file_path in tqdm(files, total=len(files)):
+        _, file_extension = os.path.splitext(old_file_path)
+        new_file_name_path = str(TOTAL_FILE_COUNT)
+        if file_extension in FILE_EXTENSIONS:
+            file_dict = {}
+            file_dict["commit_hash"] = commit_hash
+            file_dict["unique_id"] = "/".join(old_file_path.split("/")[4:])
+            file_dict["vulnerable_line_numbers"] = ""
+            file_dict["dataset_type"] = dataset_type
+            shutil.copyfile(old_file_path, os.path.join(output_folder, new_file_name_path))
+            TOTAL_FILE_COUNT += 1
+            data.append(file_dict)
+    return data
 
 def process_project(project, bigvul_data, args):
     """프로젝트별 데이터 처리"""
@@ -34,23 +52,6 @@ def process_project(project, bigvul_data, args):
     PROJECT_DIR = Path(args.output_dir) / project
     # Keep git repos and source snapshots inside the project output
     REPOSITORIES_DIR = str(PROJECT_DIR / "repository")
-
-    def generate_neg_files(files, dataset_type, commit_hash):
-        global TOTAL_FILE_COUNT
-        data = []
-        for old_file_path in tqdm(files, total=len(files)):
-            _, file_extension = os.path.splitext(old_file_path)
-            new_file_name_path = str(TOTAL_FILE_COUNT)
-            if file_extension in FILE_EXTENSIONS:
-                file_dict = {}
-                file_dict["commit_hash"] = commit_hash
-                file_dict["unique_id"] = "/".join(old_file_path.split("/")[4:])
-                file_dict["vulnerable_line_numbers"] = ""
-                file_dict["dataset_type"] = dataset_type
-                shutil.copyfile(old_file_path, os.path.join(output_folder, new_file_name_path))
-                TOTAL_FILE_COUNT += 1
-                data.append(file_dict)
-        return data
     
     df1 = bigvul_data[(bigvul_data["flaw_line_index"].notnull()) & (bigvul_data["project"] == project)][["commit_id", "unique_id", "flaw_line_index"]]
     # processed_func 매핑으로 양성 코드 복원
@@ -58,6 +59,7 @@ def process_project(project, bigvul_data, args):
     func_map = processed_funcs.set_index("unique_id")["processed_func"].to_dict()
     df1["processed_func"] = df1["unique_id"].map(func_map)
     commits = set()
+    hashes = list()
     project_folder = os.path.join(REPOSITORIES_DIR, "chromium" if project == "Chrome" else project) # get_project_folder(project)
     # Check if folder exists and is a valid git repository
     git_folder = os.path.join(project_folder, ".git")
@@ -76,14 +78,20 @@ def process_project(project, bigvul_data, args):
     df1["commit_date"] = commit_dates
     df1 = df1.dropna(subset=["commit_date"])
     df1["commit_date"] = pd.to_datetime(df1["commit_date"], utc=True)
-    # 커밋 시간 기준 정렬 후 80/20 스플릿
     df1 = df1.sort_values(by="commit_date").reset_index(drop=True)
-    split_idx = int(df1.shape[0] * 0.8)
-    df1.loc[: split_idx - 1, "dataset_type"] = "train_val"
-    df1.loc[split_idx:, "dataset_type"] = "test"
-    # 구간별 마지막 커밋 해시 선택
-    train_last_commit_hash = df1.loc[split_idx - 1, "commit_id"] if split_idx > 0 else df1.loc[df1.index[-1], "commit_id"]
-    test_last_commit_hash = df1.loc[df1.index[-1], "commit_id"]
+
+    if args.labels == LABELS_DEFAULT:
+        # 커밋 시간 기준 정렬 후 80/20 스플릿
+        split_idx = int(df1.shape[0] * 0.8)
+        df1.loc[: split_idx - 1, "dataset_type"] = "train_val"
+        df1.loc[split_idx:, "dataset_type"] = "test"
+        # 구간별 마지막 커밋 해시 선택
+        hashes.append(df1.loc[split_idx - 1, "commit_id"] if split_idx > 0 else df1.loc[df1.index[-1], "commit_id"])
+        hashes.append(df1.loc[df1.index[-1], "commit_id"])
+    else:
+        df1["dataset_type"] = args.labels[0]
+        # 전체 마지막 커밋 해시만 선택
+        hashes.append(df1.loc[df1.index[-1], "commit_id"])
     main_branch = list(gr.get_head().branches)[0]
     
     # Prepare output folder (프로젝트별 분리)
@@ -104,19 +112,17 @@ def process_project(project, bigvul_data, args):
         with open(os.path.join(output_folder, new_file_name_path), "w") as f:
             f.write(str(row["processed_func"]))
         TOTAL_FILE_COUNT += 1
+    neg_data = []
+    for label, h in zip(args.labels, hashes):
+        gr.checkout(h)
+        print("Current Branch:", gr.get_head().branches)
+        negative_files = gr.files()
+        neg_data.append(generate_neg_files(negative_files, label, h, output_folder))
     
-    gr.checkout(train_last_commit_hash)
-    print("Current Branch:", gr.get_head().branches)
-    train_negative_files = gr.files()
-    train_neg_data = generate_neg_files(train_negative_files, "train_val", train_last_commit_hash)
-    gr.checkout(test_last_commit_hash)
-    print("Current Branch:", gr.get_head().branches)
-    test_negative_files = gr.files()
-    test_neg_data = generate_neg_files(test_negative_files, "test", test_last_commit_hash)
     gr.checkout(main_branch)
     df1["unique_id"] = df1["unique_id"].astype(str)
     df1 = df1.drop(["commit_date", "processed_func"], axis=1)
-    final_dataframe = pd.concat([df1, pd.DataFrame(train_neg_data + test_neg_data)], ignore_index=True)
+    final_dataframe = pd.concat([df1, pd.DataFrame([x for sub in neg_data for x in sub])], ignore_index=True)
     final_dataframe["file_name"] = [f"{i}" for i in range(0, final_dataframe.shape[0])]
     final_dataframe.to_csv(args.output, index=False)
     script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -131,6 +137,7 @@ def main():
     parser.add_argument('--input')
     parser.add_argument('--output')
     parser.add_argument('--project')
+    parser.add_argument('--labels', help='Path to labels file', nargs='+', required=True)
     parser.add_argument('--output-dir', help='Output directory for project processing')
     args = parser.parse_args()
     bigvul_data = pd.read_csv(args.input)

@@ -19,12 +19,14 @@ PROJECTS=("FFmpeg" "ImageMagick" "jasper" "krb5" "openssl" "php-src" "qemu" "tcp
 SELECTED_PROJECTS=("jasper")  # 기본값
 ORIG_ARGS=("$@")
 MODE="vpbench"
+LABELS=("train_val" "test")  # 기본값
 
 usage() {
-    echo "Usage: $0 [--projects <target_project>]"
+    echo "Usage: $0 [--projects <target_project>] [--mode <vpbench|realvul>] [--labels <label1,label2,...>]"
     echo "  --projects: 처리할 프로젝트 (기본값: jasper)"
     echo "              'all'을 지정하면 모든 프로젝트 처리"
     echo "  --mode: 출력 루트 모드 (vpbench|realvul, 기본값: vpbench)"
+    echo "  --labels: 데이터셋 라벨 (쉼표로 구분, 기본값: train_val,test)"
 }
 
 # 스텝 실행 함수
@@ -61,6 +63,12 @@ while [[ $# -gt 0 ]]; do
         --mode)
             if [ -n "$2" ]; then
                 MODE="$2"
+            fi
+            shift 2
+            ;;
+        --labels)
+            if [ -n "$2" ]; then
+                IFS=',' read -ra LABELS <<< "$2"
             fi
             shift 2
             ;;
@@ -102,7 +110,7 @@ for PROJECT in "${SELECTED_PROJECTS[@]}"; do
 
     # Step 5: RealVul 형식 변환 (project_dataset.csv 생성)
     STEP5_OUT="$OUTPUT_DIR/$PROJECT/${PROJECT}_dataset.csv"
-    run_step 5 "$STEP5_OUT" "data_collection.py" --input "$STEP4_OUT" --output "$STEP5_OUT" --project "$PROJECT" --output-dir "$OUTPUT_DIR"
+    run_step 5 "$STEP5_OUT" "data_collection.py" --input "$STEP4_OUT" --output "$STEP5_OUT" --project "$PROJECT" --output-dir "$OUTPUT_DIR" --labels "${LABELS[@]}"
 
     # Step 6: all_functions pickle 생성
     STEP6_OUT="$OUTPUT_DIR/$PROJECT/all_functions/${PROJECT}_new_all_functions.pkl"
