@@ -55,7 +55,7 @@ fi
 
 if [ ! -f "jasper_source_code.tar.gz" ]; then
     echo "  - jasper_source_code.tar.gz 다운로드 중..."
-    wget -nc https://github.com/seokjeon/VP-Bench/releases/download/RealVul_Dataset/jasper_source_code.tar.gz -O "jasper_source_code.tar.gz"
+    wget -nc https://github.com/seokjeon/VP-Bench/releases/download/RealVul_Dataset/jasper_source_code.tar.gz
 else
     echo "  - jasper_source_code.tar.gz 이미 존재 (스킵)"
 fi
@@ -76,7 +76,7 @@ fi
 
 if [ ! -f "jasper_source_code.tar.gz" ]; then
     echo "  - jasper_source_code.tar.gz 다운로드 중..."
-    wget -nc https://github.com/seokjeon/VP-Bench/releases/download/VP-Bench_Test_Dataset/jasper_source_code.tar.gz -O "jasper_source_code.tar.gz"
+    wget -nc https://github.com/seokjeon/VP-Bench/releases/download/VP-Bench_Test_Dataset/jasper_source_code.tar.gz
 else
     echo "  - jasper_source_code.tar.gz 이미 존재 (스킵)"
 fi
@@ -89,10 +89,10 @@ echo ${PWD}
 
 test -d "$DOWNLOADS_DIR/DeepWukong/data/CWE119" || { echo "Error: CWE119 디렉토리를 찾을 수 없습니다"; exit 1; }
 test -f "$DOWNLOADS_DIR/DeepWukong/data/DeepWukong" || { echo "Error: DeepWukong 모델 파일을 찾을 수 없습니다"; exit 1; }
-test -f "$DOWNLOADS_DIR/RealVul/datasets/RealVul_Dataset/jasper_dataset.csv" || { echo "Error: RealVul jasper_dataset.csv를 찾을 수 없습니다"; exit 1; }
-test -f "$DOWNLOADS_DIR/RealVul/datasets/RealVul_Dataset/jasper_source_code.tar.gz" || { echo "Error: RealVul_Dataset-jasper_source_code.tar.gz를 찾을 수 없습니다"; exit 1; }
-test -f "$DOWNLOADS_DIR/RealVul/datasets/VP-Bench_Test_Dataset/jasper_dataset.csv" || { echo "Error: VP-Bench jasper_dataset.csv를 찾을 수 없습니다"; exit 1; }
-test -f "$DOWNLOADS_DIR/RealVul/datasets/VP-Bench_Test_Dataset/jasper_source_code.tar.gz" || { echo "Error: VP-Bench jasper_source_code.tar.gz를 찾을 수 없습니다"; exit 1; }
+test -f "$DOWNLOADS_DIR/RealVul/datasets/RealVul_Dataset/jasper_dataset.csv" || { echo "Error: RealVul-jasper_dataset.csv를 찾을 수 없습니다"; exit 1; }
+test -f "$DOWNLOADS_DIR/RealVul/datasets/RealVul_Dataset/jasper_source_code.tar.gz" || { echo "Error: RealVul-Dataset-jasper_source_code.tar.gz를 찾을 수 없습니다"; exit 1; }
+test -f "$DOWNLOADS_DIR/RealVul/datasets/VP-Bench_Test_Dataset/jasper_dataset.csv" || { echo "Error: VP-Bench-jasper_dataset.csv를 찾을 수 없습니다"; exit 1; }
+test -f "$DOWNLOADS_DIR/RealVul/datasets/VP-Bench_Test_Dataset/jasper_source_code.tar.gz" || { echo "Error: VP-Bench-jasper_source_code.tar.gz를 찾을 수 없습니다"; exit 1; }
 
 echo "✅ 모든 파일 검증 완료!"
 

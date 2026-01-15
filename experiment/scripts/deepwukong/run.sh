@@ -12,7 +12,7 @@ configure_and_prepare() {
         docker exec deepwukong bash -lc "sed -i 's|/data/dataset/.*_dataset\.csv|/data/dataset/Real_Vul_data.csv|g' config/config.yaml"
         docker exec deepwukong bash -lc "sed -i 's|project_name: ".*"|project_name: "all"|g' config/config.yaml"
     else
-        docker exec deepwukong bash -lc "sed -i 's|\"/data/dataset/.*\.csv\"|\"/data/dataset/${ds_name}-${project_name}_dataset.csv\"|g' config/config.yaml"
+        docker exec deepwukong bash -lc "sed -i 's|\"/data/dataset/.*\.csv\"|\"/data/dataset/${ds_name}/${project_name}_dataset.csv\"|g' config/config.yaml"
         docker exec deepwukong bash -lc "sed -i 's|project_name: \".*\"|project_name: \"${argument}\"|g' config/config.yaml"
     fi
 
@@ -33,5 +33,11 @@ docker exec deepwukong bash -lc "SLURM_TMPDIR=. python run.py -c ./config/config
 configure_and_prepare $SECOND_ARGUMENT
 
 # evaluate
-echo "Warning: final model path is hardcoded. Please modify if necessary."
-docker exec -w /code/models/DeepWukong -e PYTORCH_JIT=0 -e SLURM_TMPDIR=. deepwukong bash -lc "python evaluate.py ./ts_logger/lightning_logs/version_0/checkpoints/final_model.ckpt --root_folder_path ./data --split_folder_name $SECOND_ARGUMENT"
+echo "Finding latest model version..."
+LATEST_VERSION=$(docker exec deepwukong bash -lc "ls -d ./ts_logger/lightning_logs/version_* 2>/dev/null | sort -V | tail -n 1")
+if [ -z "$LATEST_VERSION" ]; then
+    echo "Error: No version folder found in lightning_logs"
+    exit 1
+fi
+echo "Using model from: $LATEST_VERSION"
+docker exec -w /code/models/DeepWukong -e PYTORCH_JIT=0 -e SLURM_TMPDIR=. deepwukong bash -lc "python evaluate.py ${LATEST_VERSION}/checkpoints/final_model.ckpt --root_folder_path ./data --split_folder_name $SECOND_ARGUMENT"
