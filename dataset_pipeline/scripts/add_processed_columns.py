@@ -124,9 +124,10 @@ def main():
         vul_rows = (df["vul"] == 1).sum()
         df = df[OUTPUT_COLUMNS]
 
+
         # flaw_line_index 컬럼을 쉼표로만 구분된 값으로 변환 (대괄호, 공백 제거)
         df["flaw_line_index"] = df["flaw_line_index"].apply(lambda x: x[1:-1].replace(" ", "") if isinstance(x, str) and x.startswith("[") and x.endswith("]") else x)
-
+        df["commit_hash"] = df["commit_id"]
         df.to_csv(args.output, index=False)
         print(
             f"Saved CSV with selected columns {OUTPUT_COLUMNS}: {args.output}"

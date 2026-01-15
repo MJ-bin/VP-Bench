@@ -92,25 +92,44 @@ for PROJECT in "${SELECTED_PROJECTS[@]}"; do
     echo "Processing project: $PROJECT"
     echo "=========================================="
     
-    # Step 1: codeLink, CVE ID, project 추출
-    STEP1_OUT="$OUTPUT_DIR/$PROJECT/VP-Bench_${PROJECT}_(codeLink,CVE ID).csv"
-    run_step 1 "$STEP1_OUT" "scrape_vpbench_test_cve.sh" "$PROJECT"
+    if [ "$MODE" = "vpbench" ]; then
+        # Step 1: codeLink, CVE ID, project 추출
+        STEP1_OUT="$OUTPUT_DIR/$PROJECT/VP-Bench_${PROJECT}_(codeLink,CVE ID).csv"
+        run_step 1 "$STEP1_OUT" "scrape_vpbench_test_cve.sh" "$PROJECT"
 
-    # Step 2: files_changed, lang 컬럼 추가
-    STEP2_OUT="$OUTPUT_DIR/$PROJECT/VP-Bench_${PROJECT}_files_changed.csv"
-    run_step 2 "$STEP2_OUT" "get_files_changed_with_lang.py" --input "$STEP1_OUT" --output "$STEP2_OUT"
+        # Step 2: files_changed, lang 컬럼 추가
+        STEP2_OUT="$OUTPUT_DIR/$PROJECT/VP-Bench_${PROJECT}_files_changed.csv"
+        run_step 2 "$STEP2_OUT" "get_files_changed_with_lang.py" --input "$STEP1_OUT" --output "$STEP2_OUT"
 
-    # Step 3: vulnerable function 확장
-    STEP3_OUT="$OUTPUT_DIR/$PROJECT/VP-Bench_${PROJECT}_files_changed_with_vulfunc.csv"
-    run_step 3 "$STEP3_OUT" "extract_functions.py" --input "$STEP2_OUT" --output "$STEP3_OUT" --project "$PROJECT" --output-dir "$OUTPUT_DIR"
+        # Step 3: vulnerable function 확장
+        STEP3_OUT="$OUTPUT_DIR/$PROJECT/VP-Bench_${PROJECT}_files_changed_with_vulfunc.csv"
+        run_step 3 "$STEP3_OUT" "extract_functions.py" --input "$STEP2_OUT" --output "$STEP3_OUT" --project "$PROJECT" --output-dir "$OUTPUT_DIR"
 
-    # Step 4: flaw_line_index, processed_func 컬럼 추가
-    STEP4_OUT="$OUTPUT_DIR/$PROJECT/VP-Bench_${PROJECT}_files_changed_with_targets.csv"
-    run_step 4 "$STEP4_OUT" "add_processed_columns.py" --input "$STEP3_OUT" --output "$STEP4_OUT"
+        # Step 4: flaw_line_index, processed_func 컬럼 추가
+        STEP4_OUT="$OUTPUT_DIR/$PROJECT/VP-Bench_${PROJECT}_files_changed_with_targets.csv"
+        run_step 4 "$STEP4_OUT" "add_processed_columns.py" --input "$STEP3_OUT" --output "$STEP4_OUT"
 
-    # Step 5: RealVul 형식 변환 (project_dataset.csv 생성)
-    STEP5_OUT="$OUTPUT_DIR/$PROJECT/${PROJECT}_dataset.csv"
-    run_step 5 "$STEP5_OUT" "data_collection.py" --input "$STEP4_OUT" --output "$STEP5_OUT" --project "$PROJECT" --output-dir "$OUTPUT_DIR" --labels "${LABELS[@]}"
+        # Step 5: RealVul 형식 변환 (project_dataset.csv 생성)
+        STEP5_OUT="$OUTPUT_DIR/$PROJECT/${PROJECT}_dataset.csv"
+        run_step 5 "$STEP5_OUT" "data_collection.py" --input "$STEP4_OUT" --mode "$MODE" --output "$STEP5_OUT" --project "$PROJECT" --output-dir "$OUTPUT_DIR" --labels "${LABELS[@]}"
+
+    fi
+
+    if [ "$MODE" = "realvul" ]; then
+        # TODO: dataset_type을 라벨에 맞게 지정
+        mkdir -p "$OUTPUT_DIR/$PROJECT"
+        STEP5_OUT="$OUTPUT_DIR/$PROJECT/${PROJECT}_dataset.csv"
+        if [ ! -f "$STEP5_OUT.old" ]; then
+            wget -O "$STEP5_OUT.old" "https://github.com/seokjeon/VP-Bench/releases/download/RealVul_Dataset/${PROJECT}_dataset.csv"
+        fi
+        if [ ! -f "$OUTPUT_DIR/$PROJECT/${PROJECT}_source_code.tar.gz" ]; then
+            wget -P "$OUTPUT_DIR/$PROJECT" "https://github.com/seokjeon/VP-Bench/releases/download/RealVul_Dataset/${PROJECT}_source_code.tar.gz"
+        fi
+        tar -xf "$OUTPUT_DIR/$PROJECT/${PROJECT}_source_code.tar.gz" -C "$OUTPUT_DIR/$PROJECT"
+
+        # Step 5: RealVul 형식 변환 (project_dataset.csv 생성)
+        run_step 5 "$STEP5_OUT" "data_collection.py" --input "$STEP5_OUT.old" --mode "$MODE" --output "$STEP5_OUT" --project "$PROJECT" --output-dir "$OUTPUT_DIR" --labels "${LABELS[@]}"
+    fi
 
     # Step 6: all_functions pickle 생성
     STEP6_OUT="$OUTPUT_DIR/$PROJECT/all_functions/${PROJECT}_new_all_functions.pkl"

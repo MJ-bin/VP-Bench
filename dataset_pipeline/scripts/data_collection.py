@@ -38,7 +38,7 @@ def generate_neg_files(files, dataset_type, commit_hash, output_folder):
         if file_extension in FILE_EXTENSIONS:
             file_dict = {}
             file_dict["commit_hash"] = commit_hash
-            file_dict["unique_id"] = "/".join(old_file_path.split("/")[4:])
+            # file_dict["unique_id"] = "/".join(old_file_path.split("/")[4:])
             file_dict["vulnerable_line_numbers"] = ""
             file_dict["dataset_type"] = dataset_type
             shutil.copyfile(old_file_path, os.path.join(output_folder, new_file_name_path))
@@ -53,11 +53,14 @@ def process_project(project, bigvul_data, args):
     # Keep git repos and source snapshots inside the project output
     REPOSITORIES_DIR = str(PROJECT_DIR / "repository")
     
-    df1 = bigvul_data[(bigvul_data["flaw_line_index"].notnull()) & (bigvul_data["project"] == project)][["commit_id", "unique_id", "flaw_line_index"]]
-    # processed_func 매핑으로 양성 코드 복원
-    processed_funcs = bigvul_data[bigvul_data["unique_id"].isin(df1["unique_id"])]
-    func_map = processed_funcs.set_index("unique_id")["processed_func"].to_dict()
-    df1["processed_func"] = df1["unique_id"].map(func_map)
+    if args.mode == "vpbench":
+        df1 = bigvul_data[(bigvul_data["flaw_line_index"].notnull()) & (bigvul_data["project"] == project)][["commit_hash", "unique_id", "flaw_line_index"]]
+        # processed_func 매핑으로 양성 코드 복원
+        processed_funcs = bigvul_data[bigvul_data["unique_id"].isin(df1["unique_id"])]
+        func_map = processed_funcs.set_index("unique_id")["processed_func"].to_dict()
+        df1["processed_func"] = df1["unique_id"].map(func_map)
+    elif args.mode == "realvul":
+        df1 = bigvul_data[(bigvul_data["vulnerable_line_numbers"].notnull())][["commit_hash", "file_name", "vulnerable_line_numbers"]]
     commits = set()
     hashes = list()
     project_folder = os.path.join(REPOSITORIES_DIR, "chromium" if project == "Chrome" else project) # get_project_folder(project)
@@ -71,8 +74,8 @@ def process_project(project, bigvul_data, args):
         commits.add(i.hash)
     commit_dates = []
     for _, row in df1.iterrows():
-        if row["commit_id"] in commits:
-            commit_dates.append(gr.get_commit(row["commit_id"]).committer_date)
+        if row["commit_hash"] in commits:
+            commit_dates.append(gr.get_commit(row["commit_hash"]).committer_date)
         else:
             commit_dates.append(None)
     df1["commit_date"] = commit_dates
@@ -86,12 +89,12 @@ def process_project(project, bigvul_data, args):
         df1.loc[: split_idx - 1, "dataset_type"] = "train_val"
         df1.loc[split_idx:, "dataset_type"] = "test"
         # 구간별 마지막 커밋 해시 선택
-        hashes.append(df1.loc[split_idx - 1, "commit_id"] if split_idx > 0 else df1.loc[df1.index[-1], "commit_id"])
-        hashes.append(df1.loc[df1.index[-1], "commit_id"])
+        hashes.append(df1.loc[split_idx - 1, "commit_hash"] if split_idx > 0 else df1.loc[df1.index[-1], "commit_hash"])
+        hashes.append(df1.loc[df1.index[-1], "commit_hash"])
     else:
         df1["dataset_type"] = args.labels[0]
         # 전체 마지막 커밋 해시만 선택
-        hashes.append(df1.loc[df1.index[-1], "commit_id"])
+        hashes.append(df1.loc[df1.index[-1], "commit_hash"])
     main_branch = list(gr.get_head().branches)[0]
     
     # Prepare output folder (프로젝트별 분리)
@@ -101,17 +104,18 @@ def process_project(project, bigvul_data, args):
     global TOTAL_FILE_COUNT
     TOTAL_FILE_COUNT = 0
 
-    # 양성 코드 스냅샷 먼저 기록 (컬럼 일관성: vulnerable_line_numbers, commit_hash 사용)
-    df1.rename(columns={"flaw_line_index": "vulnerable_line_numbers"}, inplace=True)
-    df1["commit_hash"] = df1["commit_id"]
-    df1 = df1.drop(columns=["commit_id"])
-    for _, row in tqdm(df1.iterrows(), total=len(df1)):
-        if pd.isna(row.get("processed_func", None)):
-            continue
-        new_file_name_path = str(TOTAL_FILE_COUNT)
-        with open(os.path.join(output_folder, new_file_name_path), "w") as f:
-            f.write(str(row["processed_func"]))
-        TOTAL_FILE_COUNT += 1
+    if args.mode == "vpbench":
+        # 양성 코드 스냅샷 먼저 기록 (컬럼 일관성: vulnerable_line_numbers 사용)
+        df1["unique_id"] = df1["unique_id"].astype(str)
+        df1.rename(columns={"flaw_line_index": "vulnerable_line_numbers"}, inplace=True)
+        for _, row in tqdm(df1.iterrows(), total=len(df1)):
+            if pd.isna(row.get("processed_func", None)):
+                continue
+            new_file_name_path = str(TOTAL_FILE_COUNT)
+            with open(os.path.join(output_folder, new_file_name_path), "w") as f:
+                f.write(str(row["processed_func"]))
+            TOTAL_FILE_COUNT += 1
+
     neg_data = []
     for label, h in zip(args.labels, hashes):
         gr.checkout(h)
@@ -120,8 +124,9 @@ def process_project(project, bigvul_data, args):
         neg_data.append(generate_neg_files(negative_files, label, h, output_folder))
     
     gr.checkout(main_branch)
-    df1["unique_id"] = df1["unique_id"].astype(str)
-    df1 = df1.drop(["commit_date", "processed_func"], axis=1)
+    df1 = df1.drop(["commit_date"], axis=1)
+    if "processed_func" in df1.columns:
+        df1 = df1.drop(["processed_func"], axis=1)
     final_dataframe = pd.concat([df1, pd.DataFrame([x for sub in neg_data for x in sub])], ignore_index=True)
     final_dataframe["file_name"] = [f"{i}" for i in range(0, final_dataframe.shape[0])]
     final_dataframe.to_csv(args.output, index=False)
@@ -136,6 +141,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--input')
     parser.add_argument('--output')
+    parser.add_argument('--mode', choices=['vpbench', 'realvul'])
     parser.add_argument('--project')
     parser.add_argument('--labels', help='Path to labels file', nargs='+', required=True)
     parser.add_argument('--output-dir', help='Output directory for project processing')
