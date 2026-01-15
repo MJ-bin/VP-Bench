@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import argparse
 import pandas as pd
 import json
@@ -71,13 +73,11 @@ def process_row(row):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--project", default="jasper")
+    parser.add_argument("--input")
+    parser.add_argument("--output")
     args = parser.parse_args()
 
-    project = args.project
-    input_path = BASE_DIR / "output" / project / f"VP-Bench_{project}_(codeLink,CVE ID).csv"
-    output_path = BASE_DIR / "output" / project / f"VP-Bench_{project}_files_changed.csv"
-    df = pd.read_csv(input_path)
+    df = pd.read_csv(args.input)
 
     if "commit_id" in df.columns:
         df = group_by_commit_id(df)
@@ -85,7 +85,7 @@ def main():
     df[["lang", "files_changed"]] = df.apply(process_row, axis=1)
 
     # 결과 저장
-    df.to_csv(output_path, index=False)
+    df.to_csv(args.output, index=False)
     print("완료")
 
 

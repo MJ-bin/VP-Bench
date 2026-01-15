@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import pandas as pd
 import hashlib
 from collections import defaultdict
@@ -21,12 +23,13 @@ args = parser.parse_args()
 projects = args.projects.split(',')
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+OUTPUT_DIR = BASE_DIR / "output"
 
 for project_name in tqdm(projects, total=len(projects)):
     combined_functions = []  # Reset per project
-    project_folder = BASE_DIR / "output" / project_name
+    project_folder = OUTPUT_DIR / project_name
     functions_folder = project_folder / "all_functions"
-    slurm_tmp = Path(os.environ.get("SLURM_TMPDIR", BASE_DIR / "output" / project_name / "source_code"))
+    slurm_tmp = Path(os.environ.get("SLURM_TMPDIR", OUTPUT_DIR / project_name / "source_code"))
     SLURM_source_code_path = slurm_tmp / project_name
     SLURM_source_code_path.mkdir(parents=True, exist_ok=True)
 
@@ -39,7 +42,7 @@ for project_name in tqdm(projects, total=len(projects)):
     csv_data["vulnerable_line_numbers"] = csv_data["vulnerable_line_numbers"].fillna("").astype(str)
     csv_data["file_name"] = csv_data["file_name"].astype(str)  # file_name = unique_id
     
-    with open(functions_folder / f"{project_name}_new_all_functions.pickle", "rb") as output_file:
+    with open(functions_folder / f"{project_name}_new_all_functions.pkl", "rb") as output_file:
         all_functions = pickle.load(output_file)
     vul_functions_hash = defaultdict(list)
 
@@ -60,4 +63,4 @@ for project_name in tqdm(projects, total=len(projects)):
                 if non_vul_hash not in vul_functions_hash:
                     combined_functions.append({"file_name": file, "target": 0, "vulnerable_line_numbers": "", "project": project_name, "commit_hash": row["commit_hash"], "dataset_type": row["dataset_type"]})
     functions_dataset = pd.DataFrame(combined_functions)
-    functions_dataset.to_csv(project_folder / "real_vul_functions_dataset.csv", index=False)
+    functions_dataset.to_csv(OUTPUT_DIR / "real_vul_functions_dataset.csv", index=False)

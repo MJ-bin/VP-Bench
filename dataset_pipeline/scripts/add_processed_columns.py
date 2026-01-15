@@ -56,12 +56,12 @@ def reorder_columns(df, priority_cols):
 def main():
     parser = argparse.ArgumentParser(description="Add processed_func and target columns to VP-Bench CSV.")
     parser.add_argument(
-        "--input-csv",
+        "--input",
         default=DEFAULT_INPUT_PATH,
         help=f"Path to input CSV (default: {DEFAULT_INPUT_PATH})",
     )
     parser.add_argument(
-        "--output-csv",
+        "--output",
         default=DEFAULT_OUTPUT_PATH,
         help=f"Path to output CSV (default: {DEFAULT_OUTPUT_PATH})",
     )
@@ -69,9 +69,9 @@ def main():
 
     # Load CSV
     try:
-        df = pd.read_csv(args.input_csv)
+        df = pd.read_csv(args.input)
     except Exception as e:
-        print(f"Failed to read input CSV {args.input_csv}: {e}")
+        print(f"Failed to read input CSV {args.input}: {e}")
         sys.exit(1)
 
     # Ensure columns exist
@@ -115,7 +115,7 @@ def main():
 
     # Write output
     try:
-        out_dir = os.path.dirname(args.output_csv)
+        out_dir = os.path.dirname(args.output)
         if out_dir:
             os.makedirs(out_dir, exist_ok=True)
         # Restrict output to requested columns only
@@ -131,13 +131,13 @@ def main():
         # flaw_line_index 컬럼을 쉼표로만 구분된 값으로 변환 (대괄호, 공백 제거)
         df["flaw_line_index"] = df["flaw_line_index"].apply(lambda x: x[1:-1].replace(" ", "") if isinstance(x, str) and x.startswith("[") and x.endswith("]") else x)
 
-        df.to_csv(args.output_csv, index=False)
+        df.to_csv(args.output, index=False)
         print(
-            f"Saved CSV with selected columns {OUTPUT_COLUMNS}: {args.output_csv}"
+            f"Saved CSV with selected columns {OUTPUT_COLUMNS}: {args.output}"
         )
         print(f"Total rows: {len(df)}; vul rows: {vul_rows}")
     except Exception as e:
-        print(f"Failed to write output CSV {args.output_csv}: {e}")
+        print(f"Failed to write output CSV {args.output}: {e}")
         sys.exit(3)
 
 

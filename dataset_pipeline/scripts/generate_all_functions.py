@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import argparse
 from pathlib import Path
 import pickle
@@ -5,14 +7,13 @@ import pickle
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--project", default="jasper")
-    parser.add_argument("--source-dir")
-    parser.add_argument("--output-pickle")
+    parser.add_argument("--input")
+    parser.add_argument("--output")
     args = parser.parse_args()
 
     base_dir = Path(__file__).resolve().parent.parent
-    project = args.project
-    source_dir = Path(args.source_dir) if args.source_dir else base_dir / "output" / project / "source_code"
-    output_pickle = Path(args.output_pickle) if args.output_pickle else base_dir / "output" / project / "all_functions" / f"{project}_new_all_functions.pickle"
+    source_dir = Path(args.input) # if args.source_dir else base_dir / "output" / project / "source_code"
+    output_pickle = Path(args.output) # if args.output else base_dir / "output" / project / "all_functions" / f"{project}_new_all_functions.pickle"
 
     output_pickle.parent.mkdir(parents=True, exist_ok=True)
     all_funcs: dict[str, list[dict]] = {}

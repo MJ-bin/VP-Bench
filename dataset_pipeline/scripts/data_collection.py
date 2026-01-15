@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import pandas as pd
 from tqdm import tqdm
 import os
@@ -27,7 +29,7 @@ FILE_EXTENSIONS = {".c", ".cpp", ".cxx", ".cc", ".h"}
 BASE_DIR = Path(__file__).resolve().parent.parent
 OUTPUT_BASE = BASE_DIR / "output" / "jasper"
 # Keep git repos and source snapshots inside the project output
-REPOSITORIES_DIR = os.environ.get("SLURM_TMPDIR", str(OUTPUT_BASE / "repository"))
+REPOSITORIES_DIR = str(OUTPUT_BASE / "repository")
 
 def get_project_folder(project):
     """프로젝트 폴더 경로 반환 (Chrome 예외 처리)"""
@@ -122,7 +124,7 @@ def process_project(project, bigvul_data, args):
     df1 = df1.drop(["commit_date", "processed_func"], axis=1)
     final_dataframe = pd.concat([df1, pd.DataFrame(train_neg_data + test_neg_data)], ignore_index=True)
     final_dataframe["file_name"] = [f"{i}" for i in range(0, final_dataframe.shape[0])]
-    final_dataframe.to_csv(args.output_csv, index=False)
+    final_dataframe.to_csv(args.output, index=False)
     script_dir = os.path.dirname(os.path.abspath(__file__))
     tar_path = BASE_DIR / "output" / "jasper" / f"{project}_source_code.tar.gz"
     os.chdir(OUTPUT_BASE)
@@ -132,12 +134,12 @@ def process_project(project, bigvul_data, args):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--input-csv', default=str(BASE_DIR / "output" / "jasper" / "VP-Bench_jasper_files_changed_with_targets.csv"))
-    parser.add_argument('--output-csv', default=str(BASE_DIR / "output" / "jasper" / "jasper_dataset.csv"))
+    parser.add_argument('--input', default=str(BASE_DIR / "output" / "jasper" / "VP-Bench_jasper_files_changed_with_targets.csv"))
+    parser.add_argument('--output', default=str(BASE_DIR / "output" / "jasper" / "jasper_dataset.csv"))
     args = parser.parse_args()
 
     projects = ["jasper"]  # ["FFmpeg","ImageMagick","jasper","krb5","openssl","php-src","qemu","tcpdump","linux","Chrome"]
-    bigvul_data = pd.read_csv(args.input_csv)
+    bigvul_data = pd.read_csv(args.input)
 
     for project in projects:
         process_project(project, bigvul_data, args)
