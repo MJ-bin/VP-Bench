@@ -77,14 +77,14 @@ for PROJECT in "${SELECTED_PROJECTS[@]}"; do
     # Step 1: codeLink, CVE ID, project 추출
     STEP1_OUT="$OUTPUT_DIR/$PROJECT/VP-Bench_${PROJECT}_(codeLink,CVE ID).csv"
     run_step 1 "$STEP1_OUT" "scrape_vpbench_test_cve.sh" "$PROJECT"
-    
+
     # Step 2: files_changed, lang 컬럼 추가
     STEP2_OUT="$OUTPUT_DIR/$PROJECT/VP-Bench_${PROJECT}_files_changed.csv"
     run_step 2 "$STEP2_OUT" "get_files_changed_with_lang.py" --input "$STEP1_OUT" --output "$STEP2_OUT"
 
     # Step 3: vulnerable function 확장
     STEP3_OUT="$OUTPUT_DIR/$PROJECT/VP-Bench_${PROJECT}_files_changed_with_vulfunc.csv"
-    run_step 3 "$STEP3_OUT" "extract_functions.py" --input "$STEP2_OUT" --output "$STEP3_OUT"
+    run_step 3 "$STEP3_OUT" "extract_functions.py" --input "$STEP2_OUT" --output "$STEP3_OUT" --project "$PROJECT"
 
     # Step 4: flaw_line_index, processed_func 컬럼 추가
     STEP4_OUT="$OUTPUT_DIR/$PROJECT/VP-Bench_${PROJECT}_files_changed_with_targets.csv"
@@ -92,11 +92,11 @@ for PROJECT in "${SELECTED_PROJECTS[@]}"; do
 
     # Step 5: RealVul 형식 변환 (project_dataset.csv 생성)
     STEP5_OUT="$OUTPUT_DIR/$PROJECT/${PROJECT}_dataset.csv"
-    run_step 5 "$STEP5_OUT" "data_collection.py" --input "$STEP4_OUT" --output "$STEP5_OUT"
+    run_step 5 "$STEP5_OUT" "data_collection.py" --input "$STEP4_OUT" --output "$STEP5_OUT" --project "$PROJECT"
 
     # Step 6: all_functions pickle 생성
     STEP6_OUT="$OUTPUT_DIR/$PROJECT/all_functions/${PROJECT}_new_all_functions.pkl"
-    run_step 6 "$STEP6_OUT" "generate_all_functions.py" --input "$OUTPUT_DIR/$PROJECT/source_code" --output "$STEP6_OUT"
+    run_step 6 "$STEP6_OUT" "generate_all_functions.py" --input "$OUTPUT_DIR/$PROJECT/source_code" --output "$STEP6_OUT" --project "$PROJECT"
 
 done
 

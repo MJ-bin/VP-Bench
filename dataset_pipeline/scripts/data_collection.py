@@ -27,20 +27,14 @@ PROJECT_GIT_URLS = {
 }
 FILE_EXTENSIONS = {".c", ".cpp", ".cxx", ".cc", ".h"}
 BASE_DIR = Path(__file__).resolve().parent.parent
-OUTPUT_BASE = BASE_DIR / "output" / "jasper"
-# Keep git repos and source snapshots inside the project output
-REPOSITORIES_DIR = str(OUTPUT_BASE / "repository")
-
-def get_project_folder(project):
-    """프로젝트 폴더 경로 반환 (Chrome 예외 처리)"""
-    # 프로젝트별 폴더를 분리해 충돌 방지 (Chrome는 chromium 이름 사용)
-    target_name = "chromium" if project == "Chrome" else project
-    return os.path.join(REPOSITORIES_DIR, target_name)
 
 def process_project(project, bigvul_data, args):
     """프로젝트별 데이터 처리"""
     print(f"{project} started!")
-    
+    PROJECT_DIR = BASE_DIR / "output" / project
+    # Keep git repos and source snapshots inside the project output
+    REPOSITORIES_DIR = str(PROJECT_DIR / "repository")
+
     def generate_neg_files(files, dataset_type, commit_hash):
         global TOTAL_FILE_COUNT
         data = []
@@ -64,7 +58,7 @@ def process_project(project, bigvul_data, args):
     func_map = processed_funcs.set_index("unique_id")["processed_func"].to_dict()
     df1["processed_func"] = df1["unique_id"].map(func_map)
     commits = set()
-    project_folder = get_project_folder(project)
+    project_folder = os.path.join(REPOSITORIES_DIR, "chromium" if project == "Chrome" else project) # get_project_folder(project)
     # Check if folder exists and is a valid git repository
     git_folder = os.path.join(project_folder, ".git")
     if not exists(git_folder):
@@ -93,7 +87,7 @@ def process_project(project, bigvul_data, args):
     main_branch = list(gr.get_head().branches)[0]
     
     # Prepare output folder (프로젝트별 분리)
-    output_folder = str(OUTPUT_BASE / "source_code")
+    output_folder = str(PROJECT_DIR / "source_code")
     if not exists(output_folder):
         os.makedirs(output_folder)
     global TOTAL_FILE_COUNT
@@ -126,23 +120,20 @@ def process_project(project, bigvul_data, args):
     final_dataframe["file_name"] = [f"{i}" for i in range(0, final_dataframe.shape[0])]
     final_dataframe.to_csv(args.output, index=False)
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    tar_path = BASE_DIR / "output" / "jasper" / f"{project}_source_code.tar.gz"
-    os.chdir(OUTPUT_BASE)
+    tar_path = PROJECT_DIR / f"{project}_source_code.tar.gz"
+    os.chdir(PROJECT_DIR)
     os.system(f"tar -cf {tar_path} ./source_code")
     print(f"{project} ended")
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--input', default=str(BASE_DIR / "output" / "jasper" / "VP-Bench_jasper_files_changed_with_targets.csv"))
-    parser.add_argument('--output', default=str(BASE_DIR / "output" / "jasper" / "jasper_dataset.csv"))
+    parser.add_argument('--input')
+    parser.add_argument('--output')
+    parser.add_argument('--project')
     args = parser.parse_args()
-
-    projects = ["jasper"]  # ["FFmpeg","ImageMagick","jasper","krb5","openssl","php-src","qemu","tcpdump","linux","Chrome"]
     bigvul_data = pd.read_csv(args.input)
-
-    for project in projects:
-        process_project(project, bigvul_data, args)
+    process_project(args.project, bigvul_data, args)
 
 
 if __name__ == "__main__":

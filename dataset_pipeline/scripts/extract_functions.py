@@ -30,10 +30,6 @@ scraper = cloudscraper.create_scraper()
 
 # Constants
 BASE_DIR = Path(__file__).resolve().parent.parent
-OUTPUT_BASE = BASE_DIR / "output" / "jasper"
-# Store patch/split artifacts under the project output directory
-PATCH_ROOT = OUTPUT_BASE / "patches"
-SPLIT_ROOT = OUTPUT_BASE / "extracted_functions"
 DEFAULT_CWE_ID = "others"
 EXT_MAP = {
     "c": "c",
@@ -281,8 +277,13 @@ def main():
     parser = argparse.ArgumentParser(description='Process VP-Bench dataset to extract vulnerable functions.')
     parser.add_argument('--input', required=True, help='Input CSV file path')
     parser.add_argument('--output', required=True, help='Output CSV file path')
+    parser.add_argument('--project', required=True, help='Project name')
     args = parser.parse_args()
     
+    OUTPUT_BASE = BASE_DIR / "output" / args.project
+    # Store patch/split artifacts under the project output directory
+    PATCH_ROOT = OUTPUT_BASE / "patches"
+    SPLIT_ROOT = OUTPUT_BASE / "extracted_functions"
     c_cpp_csv = pd.read_csv(args.input)
     expanded_rows = []
     vul_number=0

@@ -18,7 +18,7 @@ def getMD5(s):
     return hl.hexdigest()
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--projects', default='jasper', help='Comma-separated list of projects')
+parser.add_argument('--projects', help='Comma-separated list of projects')
 args = parser.parse_args()
 projects = args.projects.split(',')
 
