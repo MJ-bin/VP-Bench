@@ -70,16 +70,20 @@ def process_project(project, bigvul_data, args):
         os.makedirs(project_folder, exist_ok=True)
         os.system(f"git clone {PROJECT_GIT_URLS[project]} {project_folder}")
     gr = Git(project_folder)
-    for i in gr.get_list_commits():
-        commits.add(i.hash)
+    # for i in gr.get_list_commits():
+    #     commits.add(i.hash)
     commit_dates = []
     for _, row in df1.iterrows():
-        if row["commit_hash"] in commits:
+        try:
             commit_dates.append(gr.get_commit(row["commit_hash"]).committer_date)
-        else:
+        except Exception:
             commit_dates.append(None)
     df1["commit_date"] = commit_dates
     df1 = df1.dropna(subset=["commit_date"])
+    if df1.empty:
+        df1.to_csv(args.output, index=False)
+        print(f"{project} ended with no valid commits.")
+        return
     df1["commit_date"] = pd.to_datetime(df1["commit_date"], utc=True)
     df1 = df1.sort_values(by="commit_date").reset_index(drop=True)
 

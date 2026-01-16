@@ -38,6 +38,9 @@ with open(OUTPUT_DIR / "real_vul_functions_dataset.csv", "w", encoding='utf-8') 
         SLURM_source_code_path.mkdir(parents=True, exist_ok=True)
 
         source_code_path = project_folder / f"{project_name}_source_code.tar.gz"
+        if not source_code_path.is_file():
+            print(f"Source code tarball not found for project {project_name}, skipping.")
+            continue
         with tarfile.open(source_code_path, "r:*") as tar:
             tar.extractall(path=SLURM_source_code_path)
         
