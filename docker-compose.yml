@@ -89,3 +89,13 @@ services:
     command: ["/bin/bash", "-lc", "echo 'PDBERT Container Ready' && bash"]
     volumes: # TODO: In production, include via Dockerfile COPY (no volume mount)
       - ./baseline/PDBERT:/PDBERT:rw
+      # PDBERT 데이터 및 모델 (prepare.sh에서 다운로드)
+      - ./downloads/PDBERT/data:/PDBERT/data:rw
+      - ./downloads/PDBERT/pretrain:/PDBERT/pretrain:rw
+      - ./downloads/PDBERT/downstream/microsoft:/PDBERT/downstream/microsoft:rw
+      # RealVul 데이터셋 (Real_Vul 전체)
+      - ./downloads/RealVul/datasets/all_source_code:/PDBERT/data/datasets/extrinsic/vul_detect/realvul/all_source_code:ro
+      - ./downloads/RealVul/datasets/Real_Vul_data.csv:/PDBERT/data/datasets/extrinsic/vul_detect/realvul/Real_Vul_data.csv:ro
+      # RealVul 데이터셋 (jasper 프로젝트)
+      - ./downloads/RealVul/datasets/jasper_dataset.csv:/PDBERT/data/datasets/extrinsic/vul_detect/realvul/jasper_dataset.csv:ro
+      - ./downloads/RealVul/datasets/jasper_source_code.tar.gz:/PDBERT/data/datasets/extrinsic/vul_detect/realvul/jasper_source_code.tar.gz:ro
