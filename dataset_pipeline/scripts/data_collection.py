@@ -4,7 +4,6 @@ import pandas as pd
 from tqdm import tqdm
 import os
 from os.path import join,exists
-import pydriller
 from pydriller import Repository, Git
 from datetime import datetime, timedelta
 from collections import Counter
@@ -108,8 +107,8 @@ def process_project(project, bigvul_data, args):
     global TOTAL_FILE_COUNT
     TOTAL_FILE_COUNT = 0
 
+    # 양성 코드 스냅샷 먼저 기록
     if args.mode == "vpbench":
-        # 양성 코드 스냅샷 먼저 기록 (컬럼 일관성: vulnerable_line_numbers 사용)
         df1["unique_id"] = df1["unique_id"].astype(str)
         df1.rename(columns={"flaw_line_index": "vulnerable_line_numbers"}, inplace=True)
         for _, row in tqdm(df1.iterrows(), total=len(df1)):
@@ -119,15 +118,25 @@ def process_project(project, bigvul_data, args):
             with open(os.path.join(output_folder, new_file_name_path), "w") as f:
                 f.write(str(row["processed_func"]))
             TOTAL_FILE_COUNT += 1
-
+    else: # args.mode == 'realvul'
+        
+        for file_name in df1["file_name"].astype(str):
+            original_file_path = os.path.join(output_folder + ".old", file_name)
+            if os.path.isfile(original_file_path):
+                new_file_name_path = str(TOTAL_FILE_COUNT)
+                shutil.copyfile(original_file_path, os.path.join(output_folder, new_file_name_path))
+                df1.loc[df1["file_name"] == file_name, "file_name"] = new_file_name_path
+                TOTAL_FILE_COUNT += 1
+    print("before generating negative files:", TOTAL_FILE_COUNT)
     neg_data = []
-    for label, h in zip(args.labels, hashes):
-        gr.checkout(h)
-        print("Current Branch:", gr.get_head().branches)
-        negative_files = gr.files()
-        neg_data.append(generate_neg_files(negative_files, label, h, output_folder))
-    
-    gr.checkout(main_branch)
+    try:
+        for label, h in zip(args.labels, hashes):
+            gr.checkout(h)
+            print("Current Branch:", gr.get_head().branches)
+            negative_files = gr.files()
+            neg_data.append(generate_neg_files(negative_files, label, h, output_folder))
+    finally:
+        gr.checkout(main_branch)
     df1 = df1.drop(["commit_date"], axis=1)
     if "processed_func" in df1.columns:
         df1 = df1.drop(["processed_func"], axis=1)

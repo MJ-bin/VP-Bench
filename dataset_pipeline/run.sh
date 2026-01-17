@@ -125,10 +125,13 @@ for PROJECT in "${SELECTED_PROJECTS[@]}"; do
         if [ ! -f "$STEP5_OUT.old" ]; then
             wget -O "$STEP5_OUT.old" "https://github.com/seokjeon/VP-Bench/releases/download/RealVul_Dataset/${PROJECT}_dataset.csv"
         fi
-        if [ ! -f "$OUTPUT_DIR/$PROJECT/${PROJECT}_source_code.tar.gz" ]; then
-            wget -P "$OUTPUT_DIR/$PROJECT" "https://github.com/seokjeon/VP-Bench/releases/download/RealVul_Dataset/${PROJECT}_source_code.tar.gz"
+        if [ ! -f "$OUTPUT_DIR/$PROJECT/${PROJECT}_source_code.tar.gz.old" ]; then
+            wget -O "$OUTPUT_DIR/$PROJECT/${PROJECT}_source_code.tar.gz.old" "https://github.com/seokjeon/VP-Bench/releases/download/RealVul_Dataset/${PROJECT}_source_code.tar.gz"
         fi
-        tar -xf "$OUTPUT_DIR/$PROJECT/${PROJECT}_source_code.tar.gz" -C "$OUTPUT_DIR/$PROJECT"
+        if [ ! -d "$OUTPUT_DIR/$PROJECT/source_code.old" ]; then
+            tar -xf "$OUTPUT_DIR/$PROJECT/${PROJECT}_source_code.tar.gz.old" -C "$OUTPUT_DIR/$PROJECT"
+            mv "$OUTPUT_DIR/$PROJECT/source_code" "$OUTPUT_DIR/$PROJECT/source_code.old"
+        fi
 
         # Step 5: RealVul 형식 변환 (project_dataset.csv 생성)
         run_step 5 "$STEP5_OUT" "data_collection.py" --input "$STEP5_OUT.old" --mode "$MODE" --output "$STEP5_OUT" --project "$PROJECT" --output-dir "$OUTPUT_DIR" --labels "${LABELS[@]}" || continue
