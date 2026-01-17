@@ -107,7 +107,7 @@ with open(OUTPUT_DIR / "real_vul_functions_dataset.csv", "w", encoding='utf-8') 
                         # all_source_code 폴더로 복사
                         dest_path = all_source_code_dir / str(new_filename)
                         try:
-                            shutil.copy2(original_file_path, dest_path)
+                            shutil.copy2(original_file_path, dest_path.with_suffix(".c"))
                         except Exception as e:
                             print(f"Error copying {original_file_path}: {e}")
                         TOTAL_FILE_COUNT += 1
