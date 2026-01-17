@@ -4,6 +4,8 @@
 MODELS=("deepwukong" "linevul" "pdbert" "vuddy")
 SELECTED_MODELS=()
 SUCCESSFUL_MODELS=()
+NO_CACHE=false
+SKIP_TESTS=false
 
 # 로그 디렉토리 및 파일 설정
 LOG_DIR="logs/experiment"
@@ -24,6 +26,14 @@ while [[ $# -gt 0 ]]; do
             fi
             shift 2
             ;;
+        --no-cache)
+            NO_CACHE=true
+            shift
+            ;;
+        --skip-tests|--no-bats)
+            SKIP_TESTS=true
+            shift
+            ;;
         *)
             echo "Unknown option: $1"
             exit 1
@@ -37,14 +47,31 @@ if [ ${#SELECTED_MODELS[@]} -eq 0 ]; then
 fi
 
 echo "Selected models: ${SELECTED_MODELS[*]}"
+echo "No-cache build: $NO_CACHE"
+echo "Skip tests: $SKIP_TESTS"
 
 for model in "${SELECTED_MODELS[@]}"; do
+    
+    echo "Prepare data for $model..."
+    bash "./experiment/scripts/${model}/prepare.sh" || { echo "Data preparation failed for $model"; continue; }
+
     echo "Building Docker image for $model..."
     docker compose down "$model" || true
-    docker compose up -d "$model" || { echo "Build failed for $model"; exit 1; }
+    
+    # Build with --no-cache flag if enabled
+    if [ "$NO_CACHE" = true ]; then
+        docker compose build --no-cache "$model" || { echo "Build failed for $model"; exit 1; }
+    fi
+    
+    docker compose up -d "$model" || { echo "Container failed to start for $model"; exit 1; }
 
     echo "Testing Docker container for $model..."
-    bats "./docker/$model/test_container.bats" || { echo "Test failed for $model"; continue; }
+    # Skip tests if --skip-tests flag is enabled
+    if [ "$SKIP_TESTS" = false ]; then
+        bats "./docker/$model/test_container.bats" || { echo "Test failed for $model"; continue; }
+    else
+        echo "Skipping tests for $model..."
+    fi
 
     echo "$model setup and test completed."
     SUCCESSFUL_MODELS+=("$model")
@@ -55,5 +82,5 @@ echo "Successful models: ${SUCCESSFUL_MODELS[*]}"
 
 for model in "${SUCCESSFUL_MODELS[@]}"; do
     echo "Running experiment for $model..."
-    bash "./experiment/scripts/run_${model}.sh"
+    bash "./experiment/scripts/${model}/run.sh"
 done

@@ -1,0 +1,9 @@
+[submodule "baseline/RealVul"]
+	path = baseline/RealVul
+	url = https://github.com/seokjeon/RealVul.git
+[submodule "baseline/PDBERT"]
+	path = baseline/PDBERT
+	url = https://github.com/MJ-bin/PDBERT.git
+[submodule "baseline/vuddy"]
+	path = baseline/vuddy
+	url = https://github.com/seokjeon/vuddy.git
