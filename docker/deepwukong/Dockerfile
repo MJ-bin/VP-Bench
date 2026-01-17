@@ -56,9 +56,7 @@ RUN pip install ray[default] \
     clang gdown libclang mpmath nltk openpyxl safetensors sympy \
     transformers pygraphviz tensorboardX tensorboard opencensus
 
-RUN git clone https://github.com/seokjeon/RealVul /tmp/RealVul \
-    && mkdir -p /code/models/ \
-    && mv /tmp/RealVul/Experiments/DeepWukong /code/models/DeepWukong
+# 소스 코드는 런타임에 볼륨으로 마운트됨 (docker-compose.yml 참조)
 
 WORKDIR /tmp
 

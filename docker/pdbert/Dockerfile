@@ -49,10 +49,7 @@ RUN pip install --no-cache-dir \
     allennlp==2.8.0 \
     allennlp_models==2.8.0
 
-# PDBERT 클론
-WORKDIR /
-RUN git clone https://github.com/MJ-bin/PDBERT.git
-
+# 소스 코드는 런타임에 볼륨으로 마운트됨 (docker-compose.yml 참조)
 WORKDIR /PDBERT
 
 # global_vars.json 동적 생성을 위한 엔트리포인트 설정

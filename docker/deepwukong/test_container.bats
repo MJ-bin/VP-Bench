@@ -7,17 +7,12 @@ setup_file() {
 # -------------------------------------------------------------------
 
 @test "1. deepwukong 실행 환경 설정" {
-    run docker exec deepwukong bash -c "if [ ! -f /code/models/DeepWukong/data/Data.7z ]; then wget https://github.com/seokjeon/VP-Bench/releases/download/v0.1.0/Data.7z -P /code/models/DeepWukong/data/; fi"
-    run docker exec deepwukong 7z x /code/models/DeepWukong/data/Data.7z -o/code/models/DeepWukong/data/
-    run docker exec deepwukong bash -c "if [ ! -f /code/models/DeepWukong/data/DeepWukong ]; then wget https://github.com/seokjeon/VP-Bench/releases/download/v0.1.0/DeepWukong -P /code/models/DeepWukong/data/; fi"
-    
-    
     run docker exec deepwukong test -d /code/models/DeepWukong/data/CWE119
     [ "$status" -eq 0 ]
     run docker exec deepwukong test -f /code/models/DeepWukong/data/DeepWukong
     [ "$status" -eq 0 ]
-    run docker exec deepwukong sed -i "s|\"/data/dataset/.*\.csv\"|\"/data/dataset/RealVul_data.csv\"|g" config/config.yaml
-    [ "$status" -eq 0 ]
+    # run docker exec deepwukong sed -i "s|\"/data/dataset/.*\.csv\"|\"/data/dataset/RealVul_data.csv\"|g" config/config.yaml
+    # [ "$status" -eq 0 ]
 
     echo "# deepwukong is configured successfully" >&3
 }

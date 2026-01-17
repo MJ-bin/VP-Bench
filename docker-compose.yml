@@ -12,6 +12,10 @@ services:
       - PYTHONUNBUFFERED=1
     # Allow entering a bash shell and running commands directly if needed
     command: ["/bin/bash", "-lc", "echo 'VUDDY Container Ready' && bash"]
+    volumes: # TODO: In production, include via Dockerfile COPY (no volume mount)
+      - ./baseline/vuddy:/app/vuddy:rw
+      - ./downloads/vuddy/VP-Bench_Test_Dataset:/app/vuddy/input/VP-Bench_Test_Dataset:ro
+      - ./downloads/vuddy/RealVul_Dataset:/app/vuddy/input/RealVul_Dataset:ro
 
   deepwukong:
     build:
@@ -21,6 +25,7 @@ services:
     container_name: deepwukong
     working_dir: /code/models/DeepWukong
     tty: true
+    shm_size: '16gb'
     deploy:
       resources:
         reservations:
@@ -31,6 +36,11 @@ services:
     stdin_open: true
     # Allow entering a bash shell and running commands directly if needed
     command: ["/bin/bash", "-lc", "echo 'DeepWukong Container Ready' && bash"]
+    volumes: # TODO: In production, include via Dockerfile COPY (no volume mount)
+      - ./baseline/RealVul/Experiments/DeepWukong:/code/models/DeepWukong:rw
+      - ./downloads/DeepWukong/data/CWE119:/code/models/DeepWukong/data/CWE119:rw
+      - ./downloads/DeepWukong/data/DeepWukong:/code/models/DeepWukong/data/DeepWukong:ro
+      - ./downloads/RealVul/datasets:/data/dataset:ro
 
   linevul:
     build:
@@ -50,6 +60,14 @@ services:
               capabilities: [gpu]
     # Allow entering a bash shell and running commands directly if needed
     command: ["/bin/bash", "-lc", "echo 'LineVul Container Ready' && bash"]
+    volumes:
+      # 코드 (개발용 rw)
+      - ./baseline/RealVul/LineVul:/app/RealVul/LineVul:rw
+      # Experiments (실험 결과 저장 rw)
+      - ./baseline/RealVul/Experiments/LineVul:/app/RealVul/Experiments/LineVul:rw
+      # 데이터 (읽기 전용 ro)
+      - ./downloads/RealVul/datasets:/app/RealVul/Dataset:rw
+      - ./downloads/LineVul/models:/app/RealVul/LineVul/linevul/saved_models:rw
 
   pdbert:
     build:
@@ -69,3 +87,15 @@ services:
               capabilities: [gpu]
     # Allow entering a bash shell and running commands directly if needed
     command: ["/bin/bash", "-lc", "echo 'PDBERT Container Ready' && bash"]
+    volumes: # TODO: In production, include via Dockerfile COPY (no volume mount)
+      - ./baseline/PDBERT:/PDBERT:rw
+      # PDBERT 데이터 및 모델 (prepare.sh에서 다운로드)
+      - ./downloads/PDBERT/data:/PDBERT/data:rw
+      - ./downloads/PDBERT/pretrain:/PDBERT/pretrain:rw
+      - ./downloads/PDBERT/downstream/microsoft:/PDBERT/downstream/microsoft:rw
+      # RealVul 데이터셋 (Real_Vul 전체)
+      - ./downloads/RealVul/datasets/all_source_code:/PDBERT/data/datasets/extrinsic/vul_detect/realvul/all_source_code:ro
+      - ./downloads/RealVul/datasets/Real_Vul_data.csv:/PDBERT/data/datasets/extrinsic/vul_detect/realvul/Real_Vul_data.csv:ro
+      # RealVul 데이터셋 (jasper 프로젝트)
+      - ./downloads/RealVul/datasets/jasper_dataset.csv:/PDBERT/data/datasets/extrinsic/vul_detect/realvul/jasper_dataset.csv:ro
+      - ./downloads/RealVul/datasets/jasper_source_code.tar.gz:/PDBERT/data/datasets/extrinsic/vul_detect/realvul/jasper_source_code.tar.gz:ro

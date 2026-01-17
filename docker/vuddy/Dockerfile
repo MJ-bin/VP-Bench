@@ -29,10 +29,7 @@ RUN apt-get update && apt-get install -y \
 # Set working directory
 WORKDIR /app
 
-# Copy VUDDY source code
-RUN git clone https://github.com/seokjeon/vuddy.git
-
-# Change to hmark directory for default operation
+# 소스 코드는 런타임에 볼륨으로 마운트됨 (docker-compose.yml 참조)
 WORKDIR /app/vuddy
 
 # Default command - show help message
