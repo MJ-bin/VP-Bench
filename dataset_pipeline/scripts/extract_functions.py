@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import numpy as np
 import pandas as pd
 import os
@@ -28,10 +30,6 @@ scraper = cloudscraper.create_scraper()
 
 # Constants
 BASE_DIR = Path(__file__).resolve().parent.parent
-OUTPUT_BASE = BASE_DIR / "output" / "jasper"
-# Store patch/split artifacts under the project output directory
-PATCH_ROOT = OUTPUT_BASE / "patches"
-SPLIT_ROOT = OUTPUT_BASE / "extracted_functions"
 DEFAULT_CWE_ID = "others"
 EXT_MAP = {
     "c": "c",
@@ -277,11 +275,17 @@ def get_diff_information(filename,diff_start_lines):
 
 def main():
     parser = argparse.ArgumentParser(description='Process VP-Bench dataset to extract vulnerable functions.')
-    parser.add_argument('--input_csv', required=True, help='Input CSV file path')
-    parser.add_argument('--output_csv', required=True, help='Output CSV file path')
+    parser.add_argument('--input', required=True, help='Input CSV file path')
+    parser.add_argument('--output', required=True, help='Output CSV file path')
+    parser.add_argument('--output-dir', help='Output directory for project processing')
+    parser.add_argument('--project', required=True, help='Project name')
     args = parser.parse_args()
     
-    c_cpp_csv = pd.read_csv(args.input_csv)
+    OUTPUT_BASE = Path(args.output_dir) / args.project
+    # Store patch/split artifacts under the project output directory
+    PATCH_ROOT = OUTPUT_BASE / "patches"
+    SPLIT_ROOT = OUTPUT_BASE / "extracted_functions"
+    c_cpp_csv = pd.read_csv(args.input)
     expanded_rows = []
     vul_number=0
     file_name_counter = 1
@@ -428,7 +432,7 @@ def main():
 
     # expand rows: one record per vulnerable function (or single non-vul record)
     dataset_df = pd.DataFrame(expanded_rows)
-    dataset_df.to_csv(args.output_csv, index=False)
+    dataset_df.to_csv(args.output, index=False)
 
 if __name__ == "__main__":
     main()

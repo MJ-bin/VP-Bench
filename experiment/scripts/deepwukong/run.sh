@@ -8,9 +8,9 @@ configure_and_prepare() {
     shift 3  # Remove the first 3 args to pass the rest to deepwukong_pipeline.sh
 
     # Configure environment
-    if [ "$argument" = "all" ]; then
-        docker exec deepwukong bash -lc "sed -i 's|/data/dataset/.*_dataset\.csv|/data/dataset/Real_Vul_data.csv|g' config/config.yaml"
-        docker exec deepwukong bash -lc "sed -i 's|project_name: ".*"|project_name: "all"|g' config/config.yaml"
+    if [ "$project_name" = "all" ]; then
+        docker exec deepwukong bash -lc "sed -i 's|/data/dataset/.*_dataset\.csv|/data/dataset/${ds_name}/Real_Vul_data.csv\"|g' config/config.yaml"
+        docker exec deepwukong bash -lc "sed -i 's|project_name: ".*"|project_name: \"${argument}\"|g' config/config.yaml"
     else
         docker exec deepwukong bash -lc "sed -i 's|\"/data/dataset/.*\.csv\"|\"/data/dataset/${ds_name}/${project_name}_dataset.csv\"|g' config/config.yaml"
         docker exec deepwukong bash -lc "sed -i 's|project_name: \".*\"|project_name: \"${argument}\"|g' config/config.yaml"
@@ -21,16 +21,17 @@ configure_and_prepare() {
 }
 
 # Arguments
-FIRST_ARGUMENT="RealVul_Dataset/jasper"
-SECOND_ARGUMENT="VP-Bench_Test_Dataset/jasper"
+PROJECT=$1 # argument for run.sh
+TRAIN_DATASET="RealVul_Dataset/$PROJECT"
+TEST_DATASET="VP-Bench_Test_Dataset/$PROJECT"
 
 # prepare train dataset
-configure_and_prepare $FIRST_ARGUMENT
+configure_and_prepare $TRAIN_DATASET
 # train model
 docker exec deepwukong bash -lc "SLURM_TMPDIR=. python run.py -c ./config/config.yaml"
 
 # prepare test dataset
-configure_and_prepare $SECOND_ARGUMENT
+configure_and_prepare $TEST_DATASET
 
 # evaluate
 echo "Finding latest model version..."
@@ -40,4 +41,4 @@ if [ -z "$LATEST_VERSION" ]; then
     exit 1
 fi
 echo "Using model from: $LATEST_VERSION"
-docker exec -w /code/models/DeepWukong -e PYTORCH_JIT=0 -e SLURM_TMPDIR=. deepwukong bash -lc "python evaluate.py ${LATEST_VERSION}/checkpoints/final_model.ckpt --root_folder_path ./data --split_folder_name $SECOND_ARGUMENT"
+docker exec -w /code/models/DeepWukong -e PYTORCH_JIT=0 -e SLURM_TMPDIR=. deepwukong bash -lc "python evaluate.py ${LATEST_VERSION}/checkpoints/final_model.ckpt --root_folder_path ./data --split_folder_name $TEST_DATASET"

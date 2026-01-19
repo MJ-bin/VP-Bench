@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+
+import argparse
 import pandas as pd
 import json
 import time
@@ -68,11 +71,13 @@ def process_row(row):
     return pd.Series({"lang": lang, "files_changed": files_changed})
 
 
-if __name__ == "__main__":
-    # output/jasper/ 기준 경로 지정
-    input_path = BASE_DIR / "output" / "jasper" / "VP-Bench_jasper_(codeLink,CVE ID).csv"
-    output_path = BASE_DIR / "output" / "jasper" / "VP-Bench_jasper_files_changed.csv"
-    df = pd.read_csv(input_path)
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--input")
+    parser.add_argument("--output")
+    args = parser.parse_args()
+
+    df = pd.read_csv(args.input)
 
     if "commit_id" in df.columns:
         df = group_by_commit_id(df)
@@ -80,5 +85,9 @@ if __name__ == "__main__":
     df[["lang", "files_changed"]] = df.apply(process_row, axis=1)
 
     # 결과 저장
-    df.to_csv(output_path, index=False)
+    df.to_csv(args.output, index=False)
     print("완료")
+
+
+if __name__ == "__main__":
+    main()
