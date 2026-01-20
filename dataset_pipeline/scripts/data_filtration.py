@@ -34,7 +34,7 @@ if all_source_code_dir.exists():
 all_source_code_dir.mkdir(parents=True, exist_ok=True)
 TOTAL_FILE_COUNT = 0
 
-with open(OUTPUT_DIR / "real_vul_functions_dataset.csv", "w", encoding='utf-8') as f:
+with open(OUTPUT_DIR / "Real_Vul_data.csv", "w", encoding='utf-8') as f:
     writer = csv.DictWriter(f, fieldnames=["file_name", "unique_id", "target", "vulnerable_line_numbers", "project", "commit_hash", "dataset_type", "processed_func"])
     writer.writeheader()
     for project_name in tqdm(projects, total=len(projects)):
