@@ -34,8 +34,8 @@ if all_source_code_dir.exists():
 all_source_code_dir.mkdir(parents=True, exist_ok=True)
 TOTAL_FILE_COUNT = 0
 
-with open(OUTPUT_DIR / "real_vul_functions_dataset.csv", "w", encoding='utf-8') as f:
-    writer = csv.DictWriter(f, fieldnames=["file_name", "unique_id", "target", "vulnerable_line_numbers", "project", "commit_hash", "dataset_type"])
+with open(OUTPUT_DIR / "Real_Vul_data.csv", "w", encoding='utf-8') as f:
+    writer = csv.DictWriter(f, fieldnames=["file_name", "unique_id", "target", "vulnerable_line_numbers", "project", "commit_hash", "dataset_type", "processed_func"])
     writer.writeheader()
     for project_name in tqdm(projects, total=len(projects)):
         combined_functions = []  # Reset per project
@@ -67,19 +67,20 @@ with open(OUTPUT_DIR / "real_vul_functions_dataset.csv", "w", encoding='utf-8') 
             with open(original_file_path, "r", encoding="ISO-8859-1") as f:
                 source_code = "".join(f.readlines())
                 writer.writerow({
-                    "file_name": row["file_name"], 
                     "unique_id": TOTAL_FILE_COUNT,
+                    "file_name": row["file_name"], 
                     "vulnerable_line_numbers": row["vulnerable_line_numbers"], 
                     "dataset_type": row["dataset_type"], 
                     "commit_hash": row["commit_hash"], 
                     "project": project_name, 
-                    "target": 1
+                    "target": 1,
+                    "processed_func":source_code
                 })
                 new_filename = TOTAL_FILE_COUNT
                 # all_source_code 폴더로 복사
                 dest_path = all_source_code_dir / str(new_filename)
                 try:
-                    shutil.copy2(original_file_path, dest_path)
+                    shutil.copy2(original_file_path, dest_path.with_suffix(".c"))
                 except Exception as e:
                     print(f"Error copying {original_file_path}: {e}")
                 TOTAL_FILE_COUNT += 1
@@ -101,17 +102,20 @@ with open(OUTPUT_DIR / "real_vul_functions_dataset.csv", "w", encoding='utf-8') 
                             "vulnerable_line_numbers": "", 
                             "project": project_name, 
                             "commit_hash": row["commit_hash"], 
-                            "dataset_type": row["dataset_type"]
+                            "dataset_type": row["dataset_type"],
+                            "processed_func":"".join(source_code[function["start"]-1:function["end"]])
                         })
                         new_filename = TOTAL_FILE_COUNT
                         # all_source_code 폴더로 복사
                         dest_path = all_source_code_dir / str(new_filename)
                         try:
-                            shutil.copy2(original_file_path, dest_path.with_suffix(".c"))
+                            with open(dest_path.with_suffix(".c"), "w", encoding="utf-8") as f:
+                                f.write("".join(source_code[function["start"]-1:function["end"]]))
+                            # shutil.copy2(original_file_path, dest_path.with_suffix(".c"))
                         except Exception as e:
                             print(f"Error copying {original_file_path}: {e}")
                         TOTAL_FILE_COUNT += 1
-all_source_code_dirtar_path = OUTPUT_DIR / "all_source_code.tar.gz"
-with tarfile.open(all_source_code_dirtar_path, "w:gz") as tar:
+all_source_code_dirtar_path = OUTPUT_DIR / "all_source_code.tar.xz"
+with tarfile.open(all_source_code_dirtar_path, "w:xz") as tar:
     tar.add(all_source_code_dir, arcname="all_source_code")
             

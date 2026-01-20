@@ -32,7 +32,7 @@ pip install -r requirements.txt
 ### 사전 준비 사항
 1. .venv 활성화
 2. .env 파일 생성 및 설정 `GITHUB_TOKEN = {본인 깃헙 토큰 키 값}`
-3. `bash ./dataset_pipeline/run.sh [--help] [--projects <target_project>] [--mode <vpbench|realvul>] [--labels <label1,label2,...>]`
+3. `bash ./dataset_pipeline/run.sh [--help] [--projects <target_project>] [--mode <vpbench|realvul>]`
 * 로그는 logs/dataset_pipeline에 기록
 
 ## 4. 실험 재현

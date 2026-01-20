@@ -49,7 +49,7 @@ def process_project(project, bigvul_data, args):
     """프로젝트별 데이터 처리"""
     print(f"{project} started!")
     PROJECT_DIR = Path(args.output_dir) / project
-    # Keep git repos and source snapshots inside the project output
+    # 공유 캐시의 repository 심볼릭 링크 사용
     REPOSITORIES_DIR = str(PROJECT_DIR / "repository")
     
     if args.mode == "vpbench":
@@ -62,13 +62,14 @@ def process_project(project, bigvul_data, args):
         df1 = bigvul_data[(bigvul_data["vulnerable_line_numbers"].notnull())][["commit_hash", "file_name", "vulnerable_line_numbers"]]
     commits = set()
     hashes = list()
-    project_folder = os.path.join(REPOSITORIES_DIR, "chromium" if project == "Chrome" else project) # get_project_folder(project)
-    # Check if folder exists and is a valid git repository
-    git_folder = os.path.join(project_folder, ".git")
+    
+    # repository가 유효한지 확인
+    git_folder = os.path.join(REPOSITORIES_DIR, ".git")
     if not exists(git_folder):
-        os.makedirs(project_folder, exist_ok=True)
-        os.system(f"git clone {PROJECT_GIT_URLS[project]} {project_folder}")
-    gr = Git(project_folder)
+        print(f"[ERROR] Repository not found at {REPOSITORIES_DIR}")
+        print(f"[INFO] Make sure repository is cloned in the shared cache.")
+        raise FileNotFoundError(f"Git repository not found at {REPOSITORIES_DIR}")
+    gr = Git(REPOSITORIES_DIR)
     # for i in gr.get_list_commits():
     #     commits.add(i.hash)
     commit_dates = []
