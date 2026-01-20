@@ -68,7 +68,7 @@ for model in "${SELECTED_MODELS[@]}"; do
     echo "Testing Docker container for $model..."
     # Skip tests if --skip-tests flag is enabled
     if [ "$SKIP_TESTS" = false ]; then
-        bats "./docker/$model/test_container.bats" || { echo "Test failed for $model"; continue; }
+        bats -t "./docker/$model/test_container.bats" || { echo "Test failed for $model"; continue; }
     else
         echo "Skipping tests for $model..."
     fi
