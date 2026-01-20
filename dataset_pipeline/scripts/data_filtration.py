@@ -115,7 +115,7 @@ with open(OUTPUT_DIR / "Real_Vul_data.csv", "w", encoding='utf-8') as f:
                         except Exception as e:
                             print(f"Error copying {original_file_path}: {e}")
                         TOTAL_FILE_COUNT += 1
-all_source_code_dirtar_path = OUTPUT_DIR / "all_source_code.tar.gz"
-with tarfile.open(all_source_code_dirtar_path, "w:gz") as tar:
+all_source_code_dirtar_path = OUTPUT_DIR / "all_source_code.tar.xz"
+with tarfile.open(all_source_code_dirtar_path, "w:xz") as tar:
     tar.add(all_source_code_dir, arcname="all_source_code")
             
