@@ -111,9 +111,9 @@ echo "[$(date)] Command: $0 ${ORIG_ARGS[*]}"
 
 export OUTPUT_DIR="$OUTPUT_BASE/$MODE"
 if [ "$MODE" = "vpbench" ]; then
-    LABEL="train_val"
-else
     LABEL="test"
+else
+    LABEL="train_val"
 fi
 
 # 각 프로젝트마다 반복 처리
