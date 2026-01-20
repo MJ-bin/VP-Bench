@@ -212,5 +212,5 @@ for PROJECT in "${SELECTED_PROJECTS[@]}"; do
 done
 
 # Step 7: data_filtration.py 실행
-STEP7_OUT="$OUTPUT_DIR/real_vul_functions_dataset.csv"
+STEP7_OUT="$OUTPUT_DIR/Real_Vul_data.csv"
 run_step 7 "$STEP7_OUT" "data_filtration.py" --output-dir "$OUTPUT_DIR" --projects "${SELECTED_PROJECTS[@]}"
