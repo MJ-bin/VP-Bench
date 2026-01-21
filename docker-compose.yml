@@ -40,7 +40,7 @@ services:
       - ./baseline/RealVul/Experiments/DeepWukong:/code/models/DeepWukong:rw
       - ./downloads/DeepWukong/data/CWE119:/code/models/DeepWukong/data/CWE119:rw
       - ./downloads/DeepWukong/data/DeepWukong:/code/models/DeepWukong/data/DeepWukong:ro
-      - ./downloads/RealVul/datasets:/data/dataset:ro
+      - ./downloads/RealVul/datasets:/data/dataset:rw
 
   linevul:
     build:
