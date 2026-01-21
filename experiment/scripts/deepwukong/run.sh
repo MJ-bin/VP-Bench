@@ -12,7 +12,7 @@ configure_and_prepare() {
     docker exec deepwukong bash -lc "sed -i 's|project_name: \".*\"|project_name: \"${argument}\"|g' config/config.yaml"
 
     # Prepare DS
-    docker exec deepwukong bash -lc "mkdir -p /data/dataset && ./deepwukong_pipeline.sh \"${argument}\" --enable-archive"
+    docker exec deepwukong bash -lc "mkdir -p /data/dataset && ./deepwukong_pipeline.sh \"${argument}\" --enable-archive --bypass csv"
 }
 
 # Arguments
