@@ -112,7 +112,7 @@ echo "[$(date)] Command: $0 ${ORIG_ARGS[*]}"
 export OUTPUT_DIR="$OUTPUT_BASE/$MODE"
 if [ "$MODE" = "vpbench" ]; then
     LABEL="test"
-else
+else # MODE = "realvul"
     LABEL="train_val"
 fi
 

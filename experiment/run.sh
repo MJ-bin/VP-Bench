@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 # argument for selecting models
 MODELS=("deepwukong" "linevul" "pdbert" "vuddy")
 SELECTED_MODELS=()
@@ -11,7 +13,6 @@ SKIP_TESTS=false
 LOG_DIR="logs/experiment"
 mkdir -p "$LOG_DIR"
 LOG_FILE="$LOG_DIR/$(date +"%Y%m%d_%H%M%S")_experiment.log"
-
 # 모든 출력을 로그 파일과 화면에 동시에 출력
 exec > >(tee -a "$LOG_FILE") 2>&1
 echo "[$(date)] Command: $0 $@"
@@ -82,5 +83,5 @@ echo "Successful models: ${SUCCESSFUL_MODELS[*]}"
 
 for model in "${SUCCESSFUL_MODELS[@]}"; do
     echo "Running experiment for $model..."
-    bash "./experiment/scripts/${model}/run.sh"
+    bash "./experiment/scripts/${model}/run.sh" "all"
 done
