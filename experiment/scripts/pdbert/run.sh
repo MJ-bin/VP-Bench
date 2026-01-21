@@ -5,8 +5,8 @@
 # =============================================================================
 
 # Arguments
-TRAIN_DATASET_DIR="/PDBERT/data/datasets/extrinsic/vul_detect/realvul"
-TEST_DATASET_DIR="/PDBERT/data/datasets/extrinsic/vul_detect/vpbench"
+TRAIN_DATASET_DIR="/PDBERT/data/datasets/extrinsic/vul_detect/realvul/Real_Vul"
+TEST_DATASET_DIR="/PDBERT/data/datasets/extrinsic/vul_detect/vpbench/Real_Vul"
 MODEL_OUTPUT_DIR="/PDBERT/data/models/extrinsic/vul_detect"
 
 echo "=== PDBERT 실험 시작 ==="

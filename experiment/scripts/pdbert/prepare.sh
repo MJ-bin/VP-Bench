@@ -2,7 +2,8 @@
 
 set -euo pipefail
 
-DOWNLOADS_DIR="downloads"
+PROJECT_ROOT="$(pwd)"
+DOWNLOADS_DIR="$PROJECT_ROOT/downloads"
 
 # RealVul Train 데이터셋 준비 함수 (vpbench | realvul)
 # 데이터를 PDBERT 경로 구조로 복사
@@ -20,13 +21,13 @@ prepare_dataset() {
             ;;
     esac
 
-    local target_dir="$DOWNLOADS_DIR/PDBERT/data/datasets/extrinsic/vul_detect/$target_subdir"
+    local target_dir="$DOWNLOADS_DIR/PDBERT/data/datasets/extrinsic/vul_detect/$target_subdir/Real_Vul"
     mkdir -p "$target_dir"
 
     # 작업 디렉토리를 보존하기 위해 pushd/popd 사용
     pushd "$target_dir" > /dev/null
 
-    local input_root="../../../../../../../dataset_pipeline/output/$variant"
+    local input_root="$PROJECT_ROOT/dataset_pipeline/output/$variant"
     # Real_Vul_data.csv
     if [ ! -f "Real_Vul_data.csv" ]; then
         echo "  - Real_Vul_data.csv 가져오는 중... (from $input_root)"
@@ -41,13 +42,13 @@ prepare_dataset() {
         echo "  - Real_Vul_data.csv 이미 존재 (스킵)"
     fi
 
-    # all_source_code: 검증 단계는 tar.xz를 기대하므로 우선 tarball을 복사, 없으면 생성
-    if [ ! -d "all_source_code" ]; then
-        echo "  - all_source_code 가져오는 중... (from $input_root)"
-        cp -r "$input_root/all_source_code" .
-    else
-        echo "  - all_source_code 이미 존재 (스킵)"
-    fi
+    # all_source_code 복사 (현재 사용 안함 - vpbench에는 all_source_code가 없음)
+    # if [ ! -d "all_source_code" ]; then
+    #     echo "  - all_source_code 가져오는 중... (from $input_root)"
+    #     cp -r "$input_root/all_source_code" .
+    # else
+    #     echo "  - all_source_code 이미 존재 (스킵)"
+    # fi
 
     popd > /dev/null
 }
@@ -60,7 +61,6 @@ mkdir -p "$DOWNLOADS_DIR/PDBERT"
 mkdir -p "$DOWNLOADS_DIR/PDBERT/pretrain/microsoft"
 mkdir -p "$DOWNLOADS_DIR/PDBERT/downstream/microsoft"
 mkdir -p "$DOWNLOADS_DIR/PDBERT/data/datasets/extrinsic/vul_detect"
-prepare_dataset
 
 # ===================================================================
 # PDBERT_data.zip 다운로드 (pdbert-base 모델 + 데이터셋 포함, 약 1.1GB)
@@ -114,15 +114,14 @@ DATASET_VARIANTS=(
 echo "[4/6] 데이터셋 준비 (realvul, vpbench)..."
 for entry in "${DATASET_VARIANTS[@]}"; do
     IFS=':' read -r variant target_subdir label <<< "$entry"
-    target_dir="$DOWNLOADS_DIR/PDBERT/data/datasets/extrinsic/vul_detect/$target_subdir"
+    target_dir="$DOWNLOADS_DIR/PDBERT/data/datasets/extrinsic/vul_detect/$target_subdir/Real_Vul"
     
     echo "  [$label] 처리 중..."
     mkdir -p "$target_dir"
     
     # Real_Vul_data.csv 확인
-    if [ -f "$target_dir/Real_Vul_data.csv" ] && [ -d "$target_dir/all_source_code" ]; then
+    if [ -f "$target_dir/Real_Vul_data.csv" ]; then
         echo "    - Real_Vul_data.csv 이미 존재 (스킵)"
-        echo "    - all_source_code 이미 존재 (스킵)"
     else
         echo "    - prepare_dataset '$variant' 호출..."
         prepare_dataset "$variant"
@@ -133,12 +132,6 @@ for entry in "${DATASET_VARIANTS[@]}"; do
         else
             echo "    - [WARNING] Real_Vul_data.csv를 찾을 수 없습니다"
         fi
-        
-        if [ -d "$target_dir/all_source_code" ]; then
-            echo "    - all_source_code 복사 완료"
-        else
-            echo "    - [WARNING] all_source_code를 찾을 수 없습니다"
-        fi
     fi
 done
 
@@ -146,7 +139,6 @@ done
 # CodeBERT 모델 다운로드 (pretrain & downstream)
 # ===================================================================
 echo "[5/6] CodeBERT pretrain 모델 다운로드..."
-cd - > /dev/null
 cd "$DOWNLOADS_DIR/PDBERT/pretrain/microsoft"
 
 if [ -d "codebert-base" ]; then
@@ -159,7 +151,6 @@ else
 fi
 
 echo "[6/6] CodeBERT downstream 모델 다운로드..."
-cd - > /dev/null
 cd "$DOWNLOADS_DIR/PDBERT/downstream/microsoft"
 
 if [ -d "codebert-base" ]; then
