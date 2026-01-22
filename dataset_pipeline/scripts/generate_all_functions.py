@@ -15,7 +15,10 @@ def list_function_starts(file_path: Path, lang: str) -> list[int]:
     starts = []
     for line in proc.stdout.splitlines():
         tokens = [t for t in line.split() if t]
-        if len(tokens) >= 3 and tokens[2].isdigit():
+        if len(tokens) >= 5 and tokens[4].startswith("}"):
+            print(f"[SKIP_CTAG_BROKEN] file={file_path} excmd={' '.join(tokens[4:])}")
+            continue
+        if tokens[2].isdigit():
             starts.append(int(tokens[2]))
     return starts
 
