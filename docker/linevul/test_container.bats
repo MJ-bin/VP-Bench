@@ -19,8 +19,8 @@ setup_file() {
     
     # RealVul 데이터셋 확인
     run docker exec linevul bash -c '
-        test -f /app/RealVul/Dataset/Real_Vul_data.csv && \
-        test -d /app/RealVul/Dataset/all_source_code
+        test -f /app/RealVul/Dataset/jasper_dataset.csv && \
+        test -d /app/RealVul/Dataset/source_code
     '
     [ "$status" -eq 0 ]
     
@@ -71,15 +71,15 @@ PY
 # bats test_tags=timeout:600
 @test "3. 불완전한 jasper 데이터셋에 processed_func 열 추가" {
     run docker exec linevul bash -c '
-        python /app/RealVul/Experiments/LineVul/append_datasetjasper.py
+        python /app/RealVul/Experiments/LineVul/append_processed_func.py --csv /app/RealVul/Dataset/jasper_dataset.csv --src_path /app/RealVul/Dataset/source_code
     '
     [ "$status" -eq 0 ]
     
     # 출력에서 필수 패턴 매칭
     [[ "$output" == *"Loading source code mapping"* ]]
-    [[ "$output" == *"Jasper rows processed"* ]]
+    [[ "$output" == *"Total rows           : 315"* ]]
     [[ "$output" == *"Source merged"* ]]
-    [[ "$output" == *"Output:"* ]]
+    [[ "$output" == *"Output               :"* ]]
     
     # test 3 최종 확인 - 소스코드가 추가된 데이터셋 존재 확인
     run docker exec linevul bash -c '
@@ -92,7 +92,7 @@ PY
 @test "4. Jasper 데이터셋의 pickle 생성 (--prepare_dataset)" {
     run docker exec linevul bash -c '
         python /app/RealVul/Experiments/LineVul/line_vul.py \
-        --dataset_csv_path /app/RealVul/Dataset/jasper_data_append_processed_func.csv \
+        --dataset_csv_path /app/RealVul/Dataset/jasper_dataset_append_processed_func.csv \
         --dataset_path /app/RealVul/Dataset/ \
         --output_dir /app/RealVul/Experiments/LineVul \
         --tokenizer_name microsoft/codebert-base \
@@ -106,9 +106,9 @@ PY
     
     # test 6 최종 확인 - pickle 파일 존재 확인
     run docker exec linevul bash -c '
-        test -f /app/RealVul/Dataset/train_dataset.pickle && \
-        test -f /app/RealVul/Dataset/val_dataset.pickle && \
-        test -f /app/RealVul/Dataset/test_dataset.pickle
+        test -f /app/RealVul/Dataset/train_dataset.pkl && \
+        test -f /app/RealVul/Dataset/val_dataset.pkl && \
+        test -f /app/RealVul/Dataset/test_dataset.pkl
     '
     [ "$status" -eq 0 ]
 }
@@ -117,7 +117,7 @@ PY
 @test "5. Jasper 데이터셋으로 학습 (--train)" {
     run docker exec linevul bash -c '
         python /app/RealVul/Experiments/LineVul/line_vul.py \
-        --dataset_csv_path /app/RealVul/Dataset/jasper_data_append_processed_func.csv \
+        --dataset_csv_path /app/RealVul/Dataset/jasper_dataset_append_processed_func.csv \
         --dataset_path /app/RealVul/Dataset/ \
         --output_dir /app/RealVul/Experiments/LineVul \
         --tokenizer_name microsoft/codebert-base \
