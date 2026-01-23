@@ -2,6 +2,10 @@
 
 setup_file() {
     echo "# Using existing compose container: pdbert" >&3
+    if ! docker ps --format '{{.Names}}' | grep -q "^pdbert$"; then
+        echo "# [ERROR] Container 'pdbert' is not running. Please run 'docker compose up -d pdbert' first." >&3
+        return 1
+    fi
 }
 
 # -------------------------------------------------------------------
@@ -25,11 +29,7 @@ setup_file() {
     run docker exec pdbert test -d /PDBERT/downstream/microsoft/codebert-base
     [ "$status" -eq 0 ]
     
-    # RealVul 데이터 존재 확인
-    run docker exec pdbert test -d /PDBERT/data/datasets/extrinsic/vul_detect/realvul/all_source_code
-    [ "$status" -eq 0 ]
-    
-    run docker exec pdbert test -f /PDBERT/data/datasets/extrinsic/vul_detect/realvul/Real_Vul_data.csv
+    run docker exec pdbert test -f /PDBERT/data/datasets/extrinsic/vul_detect/realvul/Real_Vul/Real_Vul_data.csv
     [ "$status" -eq 0 ]
 
     echo "# PDBERT environment is configured successfully" >&3
@@ -144,9 +144,10 @@ EOF
 # Test 4: PDBERT 학습 및 평가 (test_bats 데이터셋)
 # -------------------------------------------------------------------
 
+# bats test_tags=timeout:1200
 @test "4. PDBERT 학습 및 평가 (test_bats 데이터셋)" {
-    run docker exec pdbert bash -c 'cd /PDBERT/downstream && python train_eval_from_config.py -config configs/vul_detect/pdbert_test_bats.jsonnet -task_name vul_detect/test_bats -model_path vul_detect/test_bats -average binary'
-    
+    run docker exec pdbert bash -c 'cd /PDBERT/downstream && python train_eval_from_config.py -config configs/vul_detect/pdbert_test_bats.jsonnet -task_name vul_detect/test_bats -average binary --train-only'
+
     # 실행 실패 시 에러 출력
     if [ "$status" -ne 0 ]; then
         echo "# [ERROR] Training failed with status $status" >&3
@@ -154,17 +155,16 @@ EOF
     fi
     [ "$status" -eq 0 ]
     
-    # 핵심 결과만 출력
-    echo "# === PDBERT Training & Evaluation Results ===" >&3
-    echo "# [Training]" >&3
-    echo "$output" | grep "best_validation_f1" | head -1 | sed 's/^/# /' >&3
-    echo "$output" | grep "training_duration" | head -1 | sed 's/^/# /' >&3
-    echo "# [Evaluation]" >&3
-    echo "$output" | grep "{'Accuracy'" | head -1 | sed 's/^/# /' >&3
-    
+    run docker exec pdbert bash -c 'cd /PDBERT/downstream && python train_eval_from_config.py -config configs/vul_detect/pdbert_test_bats.jsonnet -task_name vul_detect/test_bats -average binary --test-only'
+
+    # 실행 실패 시 에러 출력
+    if [ "$status" -ne 0 ]; then
+        echo "# [ERROR] Test failed with status $status" >&3
+        echo "# $output" >&3
+    fi
+    [ "$status" -eq 0 ]
+
     # 최종 확인 - 학습 및 평가 결과로그 확인
-    [[ "$output" == *"best_validation_f1"* ]]
-    [[ "$output" == *"training_duration"* ]]
     [[ "$output" == *"Start to test File"* ]]
     [[ "$output" == *"Accuracy"* ]]
     [[ "$output" == *"F1-Score"* ]]

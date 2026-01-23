@@ -8,7 +8,7 @@
 ## 1. 환경 설정
 ```bash
 git submodule update --init --recursive
-sudo apt update && sudo apt install -y bats universal-ctags jq git-lfs
+sudo apt update && sudo apt install -y bats universal-ctags jq git-lfs p7zip-full unzip
 pip install -r requirements.txt
 ```
 
