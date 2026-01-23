@@ -13,17 +13,20 @@ SKIP_TESTS=false
 LOG_DIR="logs/experiment"
 mkdir -p "$LOG_DIR"
 LOG_FILE="$LOG_DIR/$(date +"%Y%m%d_%H%M%S")_experiment.log"
-# 모든 출력을 로그 파일과 화면에 동시에 출력
-exec > >(tee -a "$LOG_FILE") 2>&1
-echo "[$(date)] Command: $0 $@"
 
 while [[ $# -gt 0 ]]; do
     case $1 in
         -m|--models)
             if [ "$2" = "all" ]; then
                 SELECTED_MODELS=("${MODELS[@]}")
+                mkdir -p "$LOG_DIR/all"
+                LOG_FILE="$LOG_DIR/all/$(date +"%Y%m%d_%H%M%S")_experiment.log"
             else
                 IFS=',' read -ra SELECTED_MODELS <<< "$2"
+                if [ ${#SELECTED_MODELS[@]} -eq 1 ]; then
+                    mkdir -p "$LOG_DIR/${SELECTED_MODELS[*]}"
+                    LOG_FILE="$LOG_DIR/${SELECTED_MODELS[*]}/$(date +"%Y%m%d_%H%M%S")_experiment.log"
+                fi
             fi
             shift 2
             ;;
@@ -46,6 +49,10 @@ if [ ${#SELECTED_MODELS[@]} -eq 0 ]; then
     echo "No models specified. Please use -m or --models to specify models."
     exit 1
 fi
+
+# 모든 출력을 로그 파일과 화면에 동시에 출력
+exec > >(tee -a "$LOG_FILE") 2>&1
+echo "[$(date)] Command: $0 $@"
 
 echo "Selected models: ${SELECTED_MODELS[*]}"
 echo "No-cache build: $NO_CACHE"
