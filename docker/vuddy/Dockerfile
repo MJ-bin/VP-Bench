@@ -23,6 +23,7 @@ RUN apt-get update && apt-get install -y \
     # Required system libraries
     libssl-dev \
     libffi-dev \
+    miller \
     # Clean up apt cache to reduce image size
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
