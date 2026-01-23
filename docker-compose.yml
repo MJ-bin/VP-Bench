@@ -14,8 +14,8 @@ services:
     command: ["/bin/bash", "-lc", "echo 'VUDDY Container Ready' && bash"]
     volumes: # TODO: In production, include via Dockerfile COPY (no volume mount)
       - ./baseline/vuddy:/app/vuddy:rw
-      - ./downloads/vuddy/VP-Bench_Test_Dataset:/app/vuddy/input/VP-Bench_Test_Dataset:ro
-      - ./downloads/vuddy/RealVul_Dataset:/app/vuddy/input/RealVul_Dataset:ro
+      - ./downloads/vuddy/VP-Bench_Test_Dataset:/app/vuddy/input/VP-Bench_Test_Dataset:rw
+      - ./downloads/vuddy/VP-Bench_Train_Dataset:/app/vuddy/input/VP-Bench_Train_Dataset:rw
 
   deepwukong:
     build:
