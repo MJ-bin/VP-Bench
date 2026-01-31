@@ -83,7 +83,7 @@ PY
     
     # test 3 최종 확인 - 소스코드가 추가된 데이터셋 존재 확인
     run docker exec linevul bash -c '
-        test -f /app/RealVul/Dataset/jasper_data_append_processed_func.csv
+        test -f /app/RealVul/Dataset/jasper_dataset_append_processed_func.csv
    '
     [ "$status" -eq 0 ]
 }
@@ -140,7 +140,7 @@ PY
 @test "6. Jasper 데이터셋으로 테스트 (--test_predict)" {
     run docker exec linevul bash -c '
         python /app/RealVul/Experiments/LineVul/line_vul.py \
-        --dataset_csv_path /app/RealVul/Dataset/jasper_data_append_processed_func.csv \
+        --dataset_csv_path /app/RealVul/Dataset/jasper_dataset_append_processed_func.csv \
         --dataset_path /app/RealVul/Dataset/ \
         --output_dir /app/RealVul/Experiments/LineVul \
         --tokenizer_name microsoft/codebert-base \
