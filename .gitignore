@@ -8,6 +8,8 @@ output/
 input/
 archive/
 cache/
+result/
+.vscode/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
