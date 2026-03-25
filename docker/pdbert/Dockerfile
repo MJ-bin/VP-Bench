@@ -41,13 +41,18 @@ RUN pip install --no-cache-dir \
 RUN pip install --no-cache-dir \
     numpy==1.22.4 \
     scipy==1.8.1 \
-    transformers==4.12.5
+    transformers==4.12.5 \
+    matplotlib==3.7.5
 
 # AllenNLP 설치 (notebook 7.x 호환성 문제 해결)
 RUN pip install --no-cache-dir "notebook<7.0" "jupyter<1.1"
 RUN pip install --no-cache-dir \
     allennlp==2.8.0 \
     allennlp_models==2.8.0
+
+# allennlp transitive dependency인 lmdb를 Python 3.8 호환 버전으로 고정
+RUN pip install --no-cache-dir --force-reinstall --no-binary=lmdb \
+    lmdb==1.4.1
 
 # 소스 코드는 런타임에 볼륨으로 마운트됨 (docker-compose.yml 참조)
 WORKDIR /PDBERT
