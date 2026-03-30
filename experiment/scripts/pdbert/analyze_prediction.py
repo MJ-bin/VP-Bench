@@ -494,10 +494,10 @@ def main():
 
     # Before Fine-tuned 모델과 After Fine-tuned 모델의 paired t-SNE 시각화
     # 후순위 연산 대상인 Before Fine-tuned 모델의 feature npz 경로에 'raw_model_eval'이 포함되어 있는지 확인
-    if RAW_MODEL_EVAL_DIRNAME in str(feature_npz_path.parent):
-        combined_tsne_image_path, combined_tsne_cache_path = maybe_export_paired_test_tsne(
-            feature_npz_path
-        )
+    # if RAW_MODEL_EVAL_DIRNAME in str(feature_npz_path.parent):
+    combined_tsne_image_path, combined_tsne_cache_path = maybe_export_paired_test_tsne(
+        feature_npz_path
+    )
 
     result_dict, fn_samples, fp_samples = analyze_predictions(
         all_ref, all_pred, all_score, original_data
